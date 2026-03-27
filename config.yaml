@@ -1,0 +1,8 @@
+simulation:
+  width: 30
+  height: 30
+  features: 5 # F: Number of cultural categories
+  traits: 10 # q: Possible variations per category
+  max_steps: 200000
+  seed: 42
+  plot_interval: 50000
