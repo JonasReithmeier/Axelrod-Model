@@ -22,4 +22,5 @@ def get_mapper(mode):
         return CultureMapper.to_hash
     elif "q-base" in mode or "qbase" in mode:
         return CultureMapper.to_q_base
-    return CultureMapper.to_hash
+    else: return None
+    

@@ -9,7 +9,8 @@ simulation:
 
 visualization:
   # Options: "hash", "q-base", "neighbor-similarity-hash", "neighbor-similarity-q-base"
-  mode: "neighbor-similarity-q-base"
-  theme: "dark"
-  node_size: 80
-  max_line_width: 4
+  mode: "neighbor-similarity-hash"
+  #Options: "light", "dark", "chaotic", "vibrant"
+  theme: "light"
+  base_node_setting: 40000 # Increase to make all nodes bigger
+  base_line_setting: 50 # Increase to make all lines thicker
