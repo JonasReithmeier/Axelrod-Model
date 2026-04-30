@@ -6,3 +6,10 @@ simulation:
   max_steps: 200000
   seed: 42
   plot_interval: 50000
+
+visualization:
+  # Options: "hash", "q-base", "neighbor-similarity-hash", "neighbor-similarity-q-base"
+  mode: "neighbor-similarity-q-base"
+  theme: "dark"
+  node_size: 80
+  max_line_width: 4
