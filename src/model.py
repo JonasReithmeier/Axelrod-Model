@@ -79,17 +79,17 @@ class AxelrodModel_regularLattice:
             self.updates_since_last_change += 1
 
     
-def is_totally_frozen(self):
-    """Prüft mathematisch exakt, ob noch irgendeine Interaktion möglich ist."""
-    # Wir prüfen für jeden Agenten seine rechten und unteren Nachbarn (Torus)
-    for x in range(self.width):
-        for y in range(self.height):
-            agent = self.grid[x, y]
-            # Wir müssen nur zwei Richtungen prüfen, um alle Verbindungen abzudecken
-            for dx, dy in [(0, 1), (1, 0)]:
-                nx, ny = (x + dx) % self.width, (y + dy) % self.height
-                neighbor = self.grid[nx, ny]
-                
-                if 0 < calculate_similarity(agent, neighbor, self.F) < 1:
-                    return False
-    return True
+    def is_totally_frozen(self):
+        """Prüft mathematisch exakt, ob noch irgendeine Interaktion möglich ist."""
+        # Wir prüfen für jeden Agenten seine rechten und unteren Nachbarn (Torus)
+        for x in range(self.width):
+            for y in range(self.height):
+                agent = self.grid[x, y]
+                # Wir müssen nur zwei Richtungen prüfen, um alle Verbindungen abzudecken
+                for dx, dy in [(0, 1), (1, 0)]:
+                    nx, ny = (x + dx) % self.width, (y + dy) % self.height
+                    neighbor = self.grid[nx, ny]
+                    
+                    if 0 < calculate_similarity(agent, neighbor, self.F) < 1:
+                        return False
+        return True

@@ -1,16 +1,27 @@
-simulation:
-  width: 30
-  height: 30
-  features: 5 # F: Number of cultural categories
-  traits: 10 # q: Possible variations per category
-  max_steps: 200000
-  seed: 42
-  plot_interval: 50000
-
-visualization:
+grid_visualization:
   # Options: "hash", "q-base", "neighbor-similarity-hash", "neighbor-similarity-q-base"
   mode: "neighbor-similarity-hash"
   #Options: "light", "dark", "chaotic", "vibrant"
   theme: "light"
   base_node_setting: 40000 # Increase to make all nodes bigger
   base_line_setting: 50 # Increase to make all lines thicker
+
+# Constant values used if not overridden by the sweep
+# Settings for standard single runs (main.py)
+simulation_defaults:
+  width: 20
+  height: 20
+  features: 3
+  traits: 10
+  seed: 42
+  max_steps: 200000 # High limit; we rely on the frozen check
+  plot_interval: 10000
+
+# Parameters for the large-scale experiment
+experiment:
+  master_seed: 42
+  M_realizations: 10
+  # Every combination of these will be tested (Cartesian Product)
+  sweep:
+    q: [2, 5, 8, 10, 12, 13, 14, 15, 18, 20, 25, 30]
+    width: [20, 40, 50]

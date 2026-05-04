@@ -7,7 +7,7 @@ def run():
     with open("config.yaml", "r") as f:
         config = yaml.safe_load(f)
 
-    model = AxelrodModel_regularLattice(config['simulation'])
+    model = AxelrodModel_regularLattice(config=config['simulation'])
     plotter = AxelrodPlotter(config)
 
     # Run simulation
