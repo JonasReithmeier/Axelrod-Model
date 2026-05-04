@@ -1,4 +1,4 @@
-from src.model import AxelrodModel
+from src.model import AxelrodModel_regularLattice
 from src.visualization.engine import AxelrodPlotter
 import yaml
 import numpy as np
@@ -7,12 +7,7 @@ def run():
     with open("config.yaml", "r") as f:
         config = yaml.safe_load(f)
 
-    # Set seeds for reproducibility
-    np.random.seed(config['simulation']['seed'])
-    import random
-    random.seed(config['simulation']['seed'])
-
-    model = AxelrodModel(config['simulation'])
+    model = AxelrodModel_regularLattice(config['simulation'])
     plotter = AxelrodPlotter(config)
 
     # Run simulation
