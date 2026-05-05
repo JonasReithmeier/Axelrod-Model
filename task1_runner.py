@@ -71,12 +71,16 @@ def main():
     master_file = data_path / "axelrod_master_results.parquet"
 
     # --- 2. Load Existing Data for Filtering ---
-    existing_combinations = set()
+    #Dict: Key: (width, q, F, seed) -> Value: True/False
+    existing_data_map = {}
     if master_file.exists():
         old_df = pd.read_parquet(master_file)
-        # We store (width, q, seed) as a tuple in a set for O(1) lookup speed
-        existing_combinations = set(zip(old_df['width'], old_df['q'], old_df['F'], old_df['seed']))
-        print(f"Loaded existing database with {len(existing_combinations)} realizations.")
+        # Create a lookup map for the frozen status
+        existing_data_map = {
+            (row.width, row.q, row.F, row.seed): (row.is_frozen, row.steps_to_freeze) 
+            for row in old_df.itertuples(index=False)
+        }
+        print(f"Database loaded. Found {len(existing_data_map)} existing entries.")
 
     # --- 3. Build Task List (Filtering Logic) ---
     sweep_params = exp_cfg['sweep']
@@ -94,17 +98,28 @@ def main():
             # Unlike Python's built-in hash(), zlib.adler32 is NOT randomized 
             # across different Python sessions, which is crucial for the Upsert logic.
             seed = zlib.adler32(seed_context.encode())
+
+            # LOGIC:
+            # - If key is not in map: It's a new run -> ADD TASK
+            # - If key is in map but status is False: It didn't freeze -> RETRY TASK
+            #only add, if now higher max_steps are used
+            is_frozen, prev_steps = existing_data_map.get((w_val, q_val, f_val, seed), (None, 0))
             
-            # Upsert Logic: Only add to the task list if this specific 
-            # parameter set + seed combination is not already in the master database.
-            if (w_val, q_val, f_val, seed) not in existing_combinations:
+            if is_frozen is None:
+                # 1. NEW TASK: Never run before
                 tasks.append({
-                    'q': q_val,
-                    'width': w_val,
-                    'F': f_val, 
-                    'max_steps': exp_cfg['max_steps'],
-                    'seed': seed
+                    'q': q_val, 'width': w_val, 'F': f_val, 
+                    'max_steps': exp_cfg['max_steps'], 'seed': seed
                 })
+            elif is_frozen == False:
+                # 2. RETRY TASK: Only if current max_steps is strictly higher than 
+                # the number of steps we tried last time.
+                if exp_cfg['max_steps'] > prev_steps:
+                    tasks.append({
+                        'q': q_val, 'width': w_val, 'F': f_val, 
+                        'max_steps': exp_cfg['max_steps'], 'seed': seed
+                    })
+                # If exp_cfg['max_steps'] is lower or equal, we skip it (spared out).
 
     if not tasks:
         print("Done! All requested realizations already exist in the database.")
@@ -117,7 +132,7 @@ def main():
     with ProcessPoolExecutor() as executor:
         new_results_list = list(executor.map(run_single_realization, tasks))
 
-    # --- 5. Merge and Save ---
+    # --- 5. Merge and Save (Upsert Logic) ---
     new_df = pd.DataFrame(new_results_list)
     
     # Report on the quality of the NEW runs
@@ -132,8 +147,8 @@ def main():
     if master_file.exists():
         old_df = pd.read_parquet(master_file)
         final_df = pd.concat([old_df, new_df], ignore_index=True)
-        # Safety check: remove duplicates just in case
-        final_df = final_df.drop_duplicates(subset=['width', 'q', 'F', 'seed'])
+        # appended new_df after old_df => keep last keeps new one (only computed, if new has more max_steps) 
+        final_df = final_df.drop_duplicates(subset=['width', 'q', 'F', 'seed'], keep='last')
     else:
         final_df = new_df
 
