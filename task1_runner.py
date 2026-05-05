@@ -3,6 +3,8 @@ import yaml
 import pandas as pd
 import numpy as np
 import zlib
+import time
+from datetime import timedelta
 from pathlib import Path
 from itertools import product
 from concurrent.futures import ProcessPoolExecutor
@@ -56,6 +58,7 @@ def run_single_realization(params):
     }
 
 def main():
+    start_time = time.perf_counter()
     # --- 1. Preparation ---
     with open("config.yaml", "r") as f:
         config = yaml.safe_load(f)
@@ -141,6 +144,17 @@ def main():
     print(f"\nDatabase Updated.")
     print(f"Total realizations in master file: {len(final_df)}")
     print(f"Master file located at: {master_file}")
+
+     # --- Final Timing Report ---
+    end_time = time.perf_counter()
+    duration = end_time - start_time
+    # Format as HH:MM:SS
+    readable_duration = str(timedelta(seconds=round(duration)))
+    
+    print("\n" + "="*40)
+    print(f"EXPERIMENT COMPLETED")
+    print(f"Total Execution Time: {readable_duration} ({duration:.2f} seconds)")
+    print("="*40)
 
 if __name__ == "__main__":
     main()
