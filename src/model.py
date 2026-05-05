@@ -1,44 +1,66 @@
 import numpy as np
 import random
+import pickle
 from .agent import AxelrodAgent
 from .utils import calculate_similarity, get_different_traits
 
 class AxelrodModel_regularLattice:
     def __init__(self, width=None, height=None, F=None, q=None, seed=None, config=None):
-        """
-        Initializes the model. Arguments passed directly override the config dictionary.
-        """
-        # Fallback logic: Use config if provided, otherwise empty dict
         cfg = config if config is not None else {}
-
-        # Assign attributes: Priority: Argument > Config > Default
         self.width = width if width is not None else cfg.get('width', 10)
         self.height = height if height is not None else cfg.get('height', 10)
         self.F = F if F is not None else cfg.get('features', 5)
         self.q = q if q is not None else cfg.get('traits', 10)
-
-        # 3. Validation
-        if None in [self.width, self.height, self.F, self.q]:
-            raise ValueError("Missing parameters! Provide either explicit arguments or a valid config.")
-
-        # 4. Reproducibility 
         self.seed = seed if seed is not None else cfg.get('seed')
-        if self.seed is None:
-            raise ValueError("Missing seed!")
-        else:
-            # Create local, isolated RNG instances (two different RNG for max effectivity in their specific usecases)
-            self.array_rng = np.random.default_rng(self.seed) # NumPy RNG (random number generator) for random arrays 
-            self.scalar_rng = random.Random(self.seed) # Standard Python RNG for random scalars/ random list choices
 
+        if None in [self.width, self.height, self.F, self.q, self.seed]:
+            raise ValueError("Missing parameters or seed!")
 
-        # Internal state for "Frozen" logic
+        # Initialize RNGs
+        self.array_rng = np.random.default_rng(self.seed)
+        self.scalar_rng = random.Random(self.seed)
+        
+        # Internal state
+        self.grid = np.empty((self.width, self.height), dtype=object)
         self.updates_since_last_change = 0
 
-        # Create a 2D grid of Agent objects
-        self.grid = np.empty((self.width, self.height), dtype=object)
+    def initialize_new_simulation(self):
+        """Fills the grid with brand new random agents."""
         for x in range(self.width):
             for y in range(self.height):
-                self.grid[x, y] = AxelrodAgent((x, y), self.F, self.q, self.array_rng)
+                c_vector = self.array_rng.integers(0, self.q, size=self.F)
+                self.grid[x, y] = AxelrodAgent(pos=(x, y), culture_vector=c_vector)
+
+    def get_checkpoint_data(self):
+        """Captures the entire state of the model for saving."""
+        return {
+            "culture_tensor": self.get_culture_tensor(),
+            "updates_since_last_change": self.updates_since_last_change,
+            "rng_numpy_state": self.array_rng.bit_generator.state,
+            "rng_python_state": self.scalar_rng.getstate()
+        }
+
+    def load_checkpoint_data(self, cp):
+        """Injects a saved state into the model (Resumes simulation)."""
+        # 1. Restore RNGs
+        self.array_rng.bit_generator.state = cp["rng_numpy_state"]
+        self.scalar_rng.setstate(cp["rng_python_state"])
+        
+        # 2. Restore Counter
+        self.updates_since_last_change = cp["updates_since_last_change"]
+        
+        # 3. Restore Grid
+        tensor = cp["culture_tensor"]
+        for x in range(self.width):
+            for y in range(self.height):
+                self.grid[x, y] = AxelrodAgent(pos=(x, y), culture_vector=tensor[x, y].copy())
+
+    def get_culture_tensor(self):
+        tensor = np.zeros((self.width, self.height, self.F), dtype=int)
+        for x in range(self.width):
+            for y in range(self.height):
+                tensor[x, y] = self.grid[x, y].culture
+        return tensor
 
     @property # accessable like class variable; but single source of truth: computed when called 
     def N(self):
@@ -75,8 +97,10 @@ class AxelrodModel_regularLattice:
                 target_trait = self.scalar_rng.choice(diff_indices)
                 agent_a.culture[target_trait] = agent_b.culture[target_trait]
             self.updates_since_last_change = 0
-        else:
-            self.updates_since_last_change += 1
+            return True
+        
+        self.updates_since_last_change += 1
+        return False
 
     
     def is_totally_frozen(self):
@@ -93,3 +117,5 @@ class AxelrodModel_regularLattice:
                     if 0 < calculate_similarity(agent, neighbor, self.F) < 1:
                         return False
         return True
+    
+    

@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import zlib
 import time
+import pickle
 from datetime import timedelta
 from pathlib import Path
 from itertools import product
@@ -12,48 +13,65 @@ from src.model import AxelrodModel_regularLattice
 from src.utils import largest_cluster_normalized, average_cluster_normalized
 
 def run_single_realization(params):
-    """
-    Worker function: Executes one realization until it reaches a frozen state.
-    """
+    # 1. Checkpoint Setup
+    checkpoint_dir = Path("data/task1/checkpoints")
+    checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    cp_file = checkpoint_dir / f"cp_w{params['width']}_q{params['q']}_F{params['F']}_s{params['seed']}.pkl"
+
+    # 2. Initialize Model Object
     model = AxelrodModel_regularLattice(
-        width=params['width'],
-        height=params['width'], 
-        F=params['F'],
-        q=params['q'],
-        seed=params['seed']
+        width=params['width'], height=params['width'], 
+        F=params['F'], q=params['q'], seed=params['seed']
     )
 
-    threshold = model.N * 100 
-    max_steps = params['max_steps']
-    steps_taken = 0
+    # 3. Resume Logic
+    steps_already_done = 0
+    if cp_file.exists():
+        try:
+            with open(cp_file, 'rb') as f:
+                checkpoint = pickle.load(f)
+                model.load_checkpoint_data(checkpoint)
+            steps_already_done = params['prev_steps']
+        except Exception:
+            # If checkpoint is corrupted, fall back to new
+            model.initialize_new_simulation()
+    else:
+        model.initialize_new_simulation()
 
-    while model.updates_since_last_change < threshold:
+    # 4. Simulation Execution
+    threshold = model.N * 100 
+    # Important: We only run the DIFFERENCE in budget
+    additional_steps_allowed = params['max_steps'] - steps_already_done
+    
+    steps_this_run = 0
+    # Run while model is NOT stable AND we haven't exhausted the new budget
+    while model.updates_since_last_change < threshold and steps_this_run < additional_steps_allowed:
         model.step()
-        steps_taken += 1
+        steps_this_run += 1
 
         if model.updates_since_last_change >= threshold:
             if model.is_totally_frozen():
                 break
             else:
-                # IMPORTANT: Reset the model's internal counter on false alarm
                 model.updates_since_last_change = 0 
 
-        if steps_taken >= max_steps:
-            break
-
+    total_steps = steps_already_done + steps_this_run
     is_frozen = model.is_totally_frozen()
-    s_max = largest_cluster_normalized(model, N=model.N)
-    s_mean = average_cluster_normalized(model, N=model.N)
-    
+
+    # 5. Post-Processing: Save or Delete Checkpoint
+    if is_frozen:
+        if cp_file.exists():
+            cp_file.unlink() # Cleanup: System is stable, no need for the state
+    else:
+        # System didn't freeze within the new budget -> Save state for next attempt
+        with open(cp_file, 'wb') as f:
+            pickle.dump(model.get_checkpoint_data(), f)
+
     return {
-        'width': params['width'],
-        'N': model.N,
-        'q': params['q'],
-        'F': params['F'],
-        'seed': params['seed'],
-        's_max': s_max,
-        's_mean': s_mean,
-        'steps_to_freeze': steps_taken,
+        'width': params['width'], 'N': model.N, 'q': params['q'], 'F': params['F'],
+        'seed': params['seed'], 's_max': largest_cluster_normalized(model, N=model.N),
+        's_mean': average_cluster_normalized(model, N=model.N),
+        'steps_to_freeze': total_steps,
         'is_frozen': is_frozen
     }
 

@@ -8,6 +8,7 @@ def run():
         config = yaml.safe_load(f)
 
     model = AxelrodModel_regularLattice(config=config['test_simulation_defaults'])
+    model.initialize_new_simulation()
     plotter = AxelrodPlotter(config)
 
     # Run simulation

@@ -6,8 +6,8 @@ from ..utils import calculate_similarity
 
 class AxelrodPlotter:
     def __init__(self, config):
-        self.config = config['visualization']
-        self.sim_config = config['simulation']
+        self.config = config['grid_visualization']
+        self.sim_config = config['test_simulation_defaults']
         #safe mode: "Try to find 'mode'. If it exists, give me the value. If it is missing, don't crash—just give me 'hash' as a default."
         self.mode = self.config.get('mode', 'hash')
         theme_key = self.config.get('theme', 'light').lower()
