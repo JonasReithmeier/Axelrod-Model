@@ -3,7 +3,7 @@ __pycache__/
 .env
 venv/
 .env/
-#data/
+data/
 plots/
 *.csv
 *.png
