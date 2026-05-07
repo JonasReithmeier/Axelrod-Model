@@ -16,6 +16,7 @@ class FastAxelrodModel_regularLattice:
         self.rng = np.random.default_rng(self.seed)
         self.grid = None
         self.updates_since_last_change = 0  
+        self.total_steps_done = 0
 
     def initialize_new_simulation(self):
         # Generate initial grid using the explicit RNG
@@ -32,7 +33,8 @@ class FastAxelrodModel_regularLattice:
         )
         
         self.updates_since_last_change = new_updates
-        return steps_done, is_frozen
+        self.total_steps_done += steps_done
+        return is_frozen
 
     def get_metrics(self):
         return get_cluster_metrics(self.grid, self.width, self.height, self.F)
@@ -41,10 +43,12 @@ class FastAxelrodModel_regularLattice:
         return {
             "grid": self.grid,
             "updates": self.updates_since_last_change,
-            "rng_state": self.rng.bit_generator.state  # Exact RNG state!
+            "rng_state": self.rng.bit_generator.state,  # Exact RNG state!
+            "prev_steps": self.total_steps_done
         }
 
-    def load_checkpoint_data(self, cp, steps_already_done):
+    def load_checkpoint_data(self, cp):
         self.grid = cp["grid"]
         self.updates_since_last_change = cp["updates"]
         self.rng.bit_generator.state = cp["rng_state"] # Restore Exact RNG State!
+        self.total_steps_done = cp['prev_steps']

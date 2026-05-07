@@ -51,8 +51,8 @@ def run_single_realization(params):
     if cp_file.exists():
         try:
             with open(cp_file, 'rb') as f:
-                model.load_checkpoint_data(pickle.load(f), params.get('prev_steps', 0))
-            steps_already_done = params.get('prev_steps', 0)
+                model.load_checkpoint_data(pickle.load(f))
+            steps_already_done = model.total_steps_done
         except:
             model.initialize_new_simulation()
     else:
@@ -64,8 +64,8 @@ def run_single_realization(params):
     # THE MASSIVE SPEEDUP: 
     # One Python call executes up to 100 million steps in C
     # -----------------------------------------------------
-    steps_this_run, is_frozen = model.run(additional_steps)
-    total_steps = steps_already_done + steps_this_run
+    is_frozen = model.run(additional_steps)
+    total_steps = model.total_steps_done
 
     # Fast metrics 
     s_max, s_mean = model.get_metrics()
@@ -167,7 +167,7 @@ def main():
                 tasks.append({
                     'q': q_val, 'width': w_val, 'F': f_val, 
                     'max_steps': exp_cfg['max_steps'], 
-                    'prev_steps': prev_steps, 
+                    #'prev_steps': prev_steps,    prev steps are now included in the checkpoint file for more safety: in case the db is behind, more calculations may be done, but seed and steps are guaranteed in sync
                     'seed': seed
                 })
 
