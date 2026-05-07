@@ -6,6 +6,7 @@ import zlib
 import time
 import pickle
 import csv
+import random
 import multiprocessing as mp
 from datetime import timedelta
 from pathlib import Path
@@ -34,9 +35,21 @@ def result_listener(queue, journal_path):
             writer.writerow(result)
             f.flush() # Force write to physical disk immediately
 
+# --- Global Worker Variable ---
+WORKER_QUEUE = None
+
+def init_worker(q):
+    """
+    Initializes the queue connection ONCE per CPU core when it boots up.
+    Prevents Socket/File Descriptor exhaustion.
+    """
+    global WORKER_QUEUE
+    WORKER_QUEUE = q
+
 # --- 2. The Worker Function ---
 def run_single_realization(params):
-    queue = params.pop('queue')
+    global WORKER_QUEUE
+    queue = WORKER_QUEUE  # Use the globally initialized queue
     cp_dir = Path("data/task1/checkpoints")
     cp_dir.mkdir(parents=True, exist_ok=True)
     cp_file = cp_dir / f"cp_w{params['width']}_q{params['q']}_F{params['F']}_s{params['seed']}.pkl"
@@ -175,6 +188,9 @@ def main():
         print("All experiments complete or frozen. Nothing to do.")
         return
 
+    # shuffling to let cpus work on mix of slow and fast freezing tasks to avoid the listener being the bottleneck
+    random.shuffle(tasks)
+
     # --- Setup Multiprocessing Listener ---
     manager = mp.Manager()
     queue = manager.Queue()
@@ -187,10 +203,7 @@ def main():
     # --- Parallel Execution ---
     stop_file = Path("STOP")
     try:
-        # maxtasksperchild=10 forces workers to refresh RAM periodically
-        with ProcessPoolExecutor(max_workers=os.cpu_count(), max_tasks_per_child=10) as executor:
-            # Prepare tasks with queue reference
-            for t in tasks: t['queue'] = queue
+        with ProcessPoolExecutor(max_workers=os.cpu_count(), initializer=init_worker, initargs=(queue,)) as executor:
             
             # Use submit for better control if we want to stop early
             futures = []
