@@ -21,10 +21,10 @@ test_simulation_defaults:
 experiment:
   master_seed: 42
   M_realizations: 100
-  max_steps: 100000000 # High limit; we rely on the frozen check
+  max_steps: 1000000000 # High limit; we rely on the frozen check
 
   # Every combination of these will be tested (Cartesian Product)
   sweep:
     F: [3, 5, 8] #
-    q: [2, 5, 8, 10, 12, 13, 14, 15, 18, 20, 25, 30] #
-    width: [5, 10, 15, 20, 40, 50] #
+    q: [2, 5, 8, 10, 11, 12, 13, 14, 15, 18, 20, 25, 30] #
+    width: [5, 10, 15, 20, 30, 40, 50] #
