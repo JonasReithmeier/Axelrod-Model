@@ -11,8 +11,7 @@ from datetime import timedelta
 from pathlib import Path
 from itertools import product
 from concurrent.futures import ProcessPoolExecutor
-from src.model import AxelrodModel_regularLattice
-from src.utils import largest_cluster_normalized, average_cluster_normalized
+from src.model import FastAxelrodModel_regularLattice
 
 # --- 1. The Result Listener (Background Process) ---
 def result_listener(queue, journal_path):
@@ -37,63 +36,49 @@ def result_listener(queue, journal_path):
 
 # --- 2. The Worker Function ---
 def run_single_realization(params):
-    """
-    Worker: Resumes or starts a model and reports to the Journal.
-    """
-    # Extract queue from params (added by main)
     queue = params.pop('queue')
-    
-    # Paths
     cp_dir = Path("data/task1/checkpoints")
     cp_dir.mkdir(parents=True, exist_ok=True)
     cp_file = cp_dir / f"cp_w{params['width']}_q{params['q']}_F{params['F']}_s{params['seed']}.pkl"
 
-    # Initialize Model
-    model = AxelrodModel_regularLattice(
+    # Initialize Fast Model
+    model = FastAxelrodModel_regularLattice(
         width=params['width'], height=params['width'], 
         F=params['F'], q=params['q'], seed=params['seed']
     )
 
-    # Resume Logic
     steps_already_done = 0
     if cp_file.exists():
         try:
             with open(cp_file, 'rb') as f:
-                model.load_checkpoint_data(pickle.load(f))
+                model.load_checkpoint_data(pickle.load(f), params.get('prev_steps', 0))
             steps_already_done = params.get('prev_steps', 0)
         except:
             model.initialize_new_simulation()
     else:
         model.initialize_new_simulation()
 
-    # Simulation Logic
-    threshold = model.N * 100 
     additional_steps = params['max_steps'] - steps_already_done
-    steps_this_run = 0
     
-    while model.updates_since_last_change < threshold and steps_this_run < additional_steps:
-        model.step()
-        steps_this_run += 1
-        if model.updates_since_last_change >= threshold:
-            if model.is_totally_frozen(): break
-            else: model.updates_since_last_change = 0 
-
+    # -----------------------------------------------------
+    # THE MASSIVE SPEEDUP: 
+    # One Python call executes up to 100 million steps in C
+    # -----------------------------------------------------
+    steps_this_run, is_frozen = model.run(additional_steps)
     total_steps = steps_already_done + steps_this_run
-    is_frozen = model.is_totally_frozen()
 
-    # Data Collection
+    # Fast metrics 
+    s_max, s_mean = model.get_metrics()
+
     result = {
         'width': params['width'], 'N': model.N, 'q': params['q'], 'F': params['F'],
-        'seed': params['seed'], 's_max': largest_cluster_normalized(model, N=model.N),
-        's_mean': average_cluster_normalized(model, N=model.N),
+        'seed': params['seed'], 's_max': s_max, 's_mean': s_mean,
         'steps_to_freeze': total_steps,
         'is_frozen': is_frozen
     }
 
-    # CRASH RESILIENCE: Send to real-time Journal
     queue.put(result)
 
-    # Checkpoint Management
     if is_frozen:
         if cp_file.exists(): cp_file.unlink()
     else:
