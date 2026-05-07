@@ -1,5 +1,5 @@
 import numpy as np
-from .core import run_steps, get_cluster_metrics, check_frozen
+from .core import run_steps, get_cluster_metrics
 
 class FastAxelrodModel_regularLattice:
     def __init__(self, width=None, height=None, F=None, q=None, seed=None, config=None):
@@ -12,10 +12,10 @@ class FastAxelrodModel_regularLattice:
 
         self.N = self.width * self.height
         
-        # Initialize Modern NumPy RNG
+        # Initialize Modern NumPy RNG (non randomized for=> reproducibility for same seed and same state for sifferent runs)
         self.rng = np.random.default_rng(self.seed)
         self.grid = None
-        self.updates_since_last_change = 0
+        self.updates_since_last_change = 0  
 
     def initialize_new_simulation(self):
         # Generate initial grid using the explicit RNG

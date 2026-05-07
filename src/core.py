@@ -7,7 +7,8 @@ def calculate_similarity(agent_a, agent_b, F):
     for i in range(F):
         if agent_a[i] == agent_b[i]:
             shared += 1
-    return shared
+    return shared 
+
 
 @njit
 def check_frozen(grid, W, H, F):
@@ -59,9 +60,9 @@ def run_steps(grid, max_steps, F, W, H, updates_since_change, threshold, rng):
             if rng.random() < prob:
                 target_trait = diff_indices[rng.integers(0, diff_count)]
                 grid[x, y, target_trait] = grid[nx, ny, target_trait]
-                updates_since_change = 0
-            else:
-                updates_since_change += 1
+
+            updates_since_change = 0
+
         else:
             updates_since_change += 1
             
@@ -134,4 +135,6 @@ def get_cluster_metrics(grid, W, H, F):
     N = W * H
     s_max = max_size / N
     s_mean = (total_size / num_clusters) / N
+    if (total_size != W*H):
+        ValueError("total_size != W*H")
     return s_max, s_mean
