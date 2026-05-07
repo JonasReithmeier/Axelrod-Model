@@ -56,8 +56,7 @@ def run_steps(grid, max_steps, F, W, H, updates_since_change, threshold, rng):
                 
         # Interaction Rule
         if 0 < shared < F:
-            prob = shared / F
-            if rng.random() < prob:
+            if rng.random() * F < shared:
                 target_trait = diff_indices[rng.integers(0, diff_count)]
                 grid[x, y, target_trait] = grid[nx, ny, target_trait]
 
