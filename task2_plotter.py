@@ -1,6 +1,9 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 from pathlib import Path
+import matplotlib.cm as cm
+import numpy as np
+from pathlib import Path
 
 def recreate_watts_strogatz_plot(data_path="data/small_world/axelrod_sw_master_results.parquet"):
     file_path = Path(data_path)
@@ -82,6 +85,85 @@ def recreate_watts_strogatz_plot(data_path="data/small_world/axelrod_sw_master_r
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.close() 
 
+def plot_sw_phase_transition(F_val=5, k_val=10, 
+                             target_p_values=[0.0, 0.001, 0.01, 0.1, 1.0],
+                             data_path="data/small_world/axelrod_sw_master_results.parquet"):
+    """
+    Plots the Axelrod model phase transition (s_max vs q) for specific rewiring 
+    probabilities (p), fixing F and k. Uses error bars for standard deviation.
+    """
+    file_path = Path(data_path)
+    if not file_path.exists():
+        print(f"Error: Could not find data file at {file_path}")
+        return
+
+    # 1. Load data
+    df = pd.read_parquet(file_path)
+
+    # 2. Filter for the specific F and k
+    df_filtered = df[(df['F'] == F_val) & (df['k'] == k_val)]
+    
+    # 3. Filter OUT old runs: keep only the targeted p values
+    df_filtered = df_filtered[df_filtered['p'].isin(target_p_values)]
+    
+    if df_filtered.empty:
+        print(f"Error: No data found for F={F_val}, k={k_val}, and specified p values.")
+        return
+        
+    N_val = df_filtered['N'].iloc[0]
+
+    # 4. Aggregate data: Mean and StdDev for s_max grouped by p and q
+    grouped = df_filtered.groupby(['p', 'q'])['s_max'].agg(['mean', 'std']).reset_index()
+
+    # 5. Setup Plot
+    fig, ax = plt.subplots(figsize=(10, 6), dpi=200)
+    
+    # Get the unique 'p' values that actually exist in the filtered data
+    p_values = sorted(grouped['p'].unique())
+    
+    # Setup colormap
+    colors = cm.viridis(np.linspace(0.1, 0.9, len(p_values)))
+
+    # 6. Plot using error bars
+    for i, p in enumerate(p_values):
+        subset = grouped[grouped['p'] == p].sort_values(by='q')
+        
+        q_vals = subset['q']
+        mean_smax = subset['mean']
+        std_smax = subset['std'].fillna(0) # Fill NaN with 0 if only 1 realization exists
+        
+        # plt.errorbar replaces plot() and fill_between()
+        # fmt='-o' creates a line with circular markers
+        # capsize defines the width of the error bar caps
+        ax.errorbar(q_vals, mean_smax, yerr=std_smax, fmt='-o', 
+                    markersize=5, linewidth=2, capsize=4, capthick=1.5, 
+                    color=colors[i], label=f'p = {p}')
+
+    # 7. Formatting
+    ax.set_xlabel('Number of traits ($q$)', fontsize=14)
+    ax.set_ylabel(r'Largest Cultural Cluster $\langle S_{max} \rangle / N$', fontsize=14)
+    ax.set_title(f'Axelrod Phase Transition on Small-World Network\n($N={N_val}$, $F={F_val}$, $k={k_val}$)', fontsize=15, pad=15)
+    
+    # Ensure axes limits make sense
+    ax.set_ylim(-0.05, 1.05)
+    ax.grid(True, linestyle='--', alpha=0.6)
+    ax.tick_params(axis='both', which='major', labelsize=12)
+    
+    # Legend setup
+    ax.legend(title="Rewiring Prob ($p$)", fontsize=11, title_fontsize=12, loc='upper right')
+
+    # 8. Output Management
+    out_dir = Path("plots/task2")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    
+    out_file = out_dir / f"phase_transition_F{F_val}_k{k_val}.png"
+    plt.tight_layout()
+    plt.savefig(out_file)
+    plt.close(fig) 
+    
+    print(f"Success! Plot saved to: {out_file}")
+    
 
 if __name__ == "__main__":
     recreate_watts_strogatz_plot()
+    plot_sw_phase_transition(F_val=5, k_val=10, target_p_values=[0.0, 0.001, 0.01, 0.1, 1.0])
