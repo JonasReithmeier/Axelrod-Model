@@ -26,7 +26,7 @@ experiment:
   # Every combination of these will be tested (Cartesian Product)
   sweep:
     F: [3, 5, 8] #
-    q: [2, 5, 8, 10, 11, 12, 13, 14, 15, 18, 20, 25, 30] #
+    q: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 18, 20, 25, 30] #
     width: [5, 10, 15, 20, 30, 40, 50] #
 
   # task22: small worlds network
@@ -34,7 +34,7 @@ experiment:
 sw_experiment:
   master_seed: 42
   # 30 realizations gives excellent statistical smoothness for phase transition plots
-  M_realizations: 100
+  M_realizations: 500
 
   # 200 Million step cap. Runs near the critical phase transition will take
   # a long time to freeze. This ensures they have room to finish without infinite loops.
@@ -45,7 +45,7 @@ sw_experiment:
     N: [1000]
 
     # Initial Degree: 4 (acts like a 2D regular lattice), 10 (WS paper baseline)
-    k: [4, 10]
+    k: [10, 4]
 
     # Cultural Complexity: Low, Medium, High
     F: [3, 5, 10]
@@ -56,8 +56,39 @@ sw_experiment:
     # 0.01 = Perfect Small-World
     # 0.1 = Approaching Randomness
     # 1.0 = Pure Random Graph
-    p: [0.0, 0.001, 0.01, 0.1, 1.0]
+    p: [
+        0.0,
+        0.0001,
+        0.0002,
+        0.0005,
+        0.001,
+        0.002,
+        0.005,
+        0.01,
+        0.02,
+        0.05,
+        0.1,
+        0.2,
+        0.5,
+        1.0,
+      ] #[0.0, 0.001, 0.01, 0.1, 1.0]
 
     # Number of Traits: This is the critical axis.
     # We sweep densely from 2 to 100 to catch the exact moment the phase transition happens.
     q: [2, 5, 10, 15, 20, 25, 30, 40, 50, 60, 80, 100]
+
+as_experiment:
+  master_seed: 42
+  M_realizations: 10
+  max_steps: 100000000
+  sweep:
+    width: [40] # 40x40 grid = 1600 cells
+    F: [5]
+    q: [10]
+
+    # h = Fraction of empty sites (0.05 = 5% empty, 0.2 = 20% empty)
+    h: [0.05, 0.1, 0.2, 0.4]
+
+    # T = Tolerance (Max allowed difference fraction)
+    # Sweeping from Low tolerance (strict) to High tolerance (relaxed)
+    T: [0.1, 0.3, 0.5, 0.7, 0.9, 1.0]
