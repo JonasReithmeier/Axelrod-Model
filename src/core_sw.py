@@ -40,7 +40,7 @@ def run_steps_sw(grid, edge_ptrs, edges, max_steps, F, N, updates_since_change, 
             continue
             
         # Pick random neighbor
-        neighbor_idx = edges[start + int(rng.random() * degree)]
+        neighbor_idx = edges[start + int(rng.random() * degree)] # optimized for numba, np.random.randint(0,degree) might carry overhead
             
         shared = 0
         diff_count = 0
@@ -140,12 +140,14 @@ def compute_clustering_coefficient(edge_ptrs, edges, N):
         existing_edges = 0
         # Check all pairs of neighbors of node i
         for u_idx in range(start_i, end_i):
-            u = edges[u_idx]
+            u = edges[u_idx] #neighbor of i 
+            
+            # pointers for neighbors of u
             start_u = edge_ptrs[u]
             end_u = edge_ptrs[u + 1]
             
             for v_idx in range(start_i, end_i):
-                v = edges[v_idx]
+                v = edges[v_idx] 
                 if u < v:  # Only check each pair once
                     # Is v a neighbor of u?
                     for w_idx in range(start_u, end_u):
@@ -153,6 +155,7 @@ def compute_clustering_coefficient(edge_ptrs, edges, N):
                             existing_edges += 1
                             break
                             
+        # every neighbor of i can be connected with every neighbor of i except with itsself: (degree_i * (degree_i - 1)); connection k-> and j->k count as one : /2.0
         max_possible_edges = (degree_i * (degree_i - 1)) / 2.0
         total_C += existing_edges / max_possible_edges
         

@@ -16,14 +16,14 @@ class AxelrodSmallWorld:
         self.updates_since_last_change = 0
         self.total_steps = 0 
         
-        # Graph CSR Structures
-        self.edge_ptrs = None
+        # Graph CSR (Compressed Sparse Row) Structures: !D array => entries next to each other in physical RAM (not the case for lists of lists); numba can only perform with basic data types adn numpy 1D arrays
+        self.edge_ptrs = None   #pointers to assign edges in 1D self.edges list to agents [0,2,3]: agaent one has friends = edges[0:2] = edges[0], edges[1], agent two has one friend, edges[2]
         self.edges = None
 
     def _build_graph(self):
         """Generates Watts-Strogatz graph and converts to fast CSR format."""
         # Use exact same seed so topology is deterministically identical across resumes
-        G = nx.watts_strogatz_graph(self.N, self.k, self.p, seed=self.seed)
+        G = nx.watts_strogatz_graph(self.N, self.k, self.p, seed=self.seed) # at initialisation: With probability p, a connection gets unplugged and rewired it to a completely random agent across the world.
         
         # Convert NetworkX to Adjacency List
         adj_list = [list(G.neighbors(n)) for n in range(self.N)]
@@ -38,7 +38,7 @@ class AxelrodSmallWorld:
 
     def initialize_new_simulation(self):
         self._build_graph()
-        self.grid = self.rng.integers(0, self.q, size=(self.N, self.F), dtype=np.int16)
+        self.grid = self.rng.integers(0, self.q, size=(self.N, self.F), dtype=np.int16) # 2D array: array of FD array agents
         self.updates_since_last_change = 0
         self.total_steps = 0
 
@@ -72,9 +72,9 @@ class AxelrodSmallWorld:
             "total_steps": self.total_steps
         }
 
-    def load_checkpoint_data(self, cp):
+    def load_checkpoint_data(self, cp): #TODO edges and edge_pointers are not being loaded
         self._build_graph() # Rebuild graph deterministically instead of pickling to save space
         self.grid = cp["grid"]
         self.updates_since_last_change = cp["updates"]
         self.rng.bit_generator.state = cp["rng_state"]
-        self.total_steps = cp.get("total_steps", 0)
+        self.total_steps = cp.get("total_steps", 0) 
