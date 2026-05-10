@@ -25,12 +25,12 @@ class AxelrodSchellingModel:
         self.grid = self.rng.integers(0, self.q, size=(self.W, self.H, self.F), dtype=np.int16)
         
         # 2. Punch holes to create empty sites (-1)
-        self.empty_locs = np.zeros((self.num_empty, 2), dtype=np.int32)
+        self.empty_locs = np.zeros((self.num_empty, 2), dtype=np.int32) # num_empty (rows) x 2 (colums) 
         
         if self.num_empty > 0:
             flat_indices = self.rng.choice(self.N_cells, size=self.num_empty, replace=False)
             for i, idx in enumerate(flat_indices):
-                ex, ey = idx % self.W, idx // self.W
+                ex, ey = idx % self.W, idx // self.W  # % modulo, "x /7 y" return how often y fits into x (= (x-(x%y))/y)
                 self.grid[ex, ey, :] = -1
                 self.empty_locs[i] = [ex, ey]
                 
