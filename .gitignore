@@ -7,3 +7,4 @@ venv/
 plots/
 *.csv
 *.png
+*.pkl
