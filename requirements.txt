@@ -1,4 +1,17 @@
+# Core Computation
 numpy
+numba
+
+# Graph Theory (For Watts-Strogatz Small World topology)
+networkx
+
+# Data Management
+pandas
+pyarrow
+PyYAML
+
+# Visualization
 matplotlib
-pyyaml
-seaborn
+
+
+# to install, prompt in terminal: pip install -r requirements.txt
