@@ -85,7 +85,7 @@ def recreate_watts_strogatz_plot(data_path="data/small_world/axelrod_sw_master_r
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.close() 
 
-def plot_sw_phase_transition(F_val=5, k_val=10, 
+def plot_sw_phase_transition(F_val=5, k_val=4, 
                              target_p_values=[0.0, 0.001, 0.01, 0.1, 1.0],
                              data_path="data/small_world/axelrod_sw_master_results.parquet"):
     """
@@ -166,4 +166,4 @@ def plot_sw_phase_transition(F_val=5, k_val=10,
 
 if __name__ == "__main__":
     recreate_watts_strogatz_plot()
-    plot_sw_phase_transition(F_val=5, k_val=10, target_p_values=[0.0, 0.001, 0.01, 0.1, 1.0])
+    plot_sw_phase_transition(F_val=3, k_val=4, target_p_values=[0.0, 0.001, 0.01, 0.1, 1.0])

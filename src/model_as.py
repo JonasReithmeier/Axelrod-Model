@@ -30,7 +30,7 @@ class AxelrodSchellingModel:
         if self.num_empty > 0:
             flat_indices = self.rng.choice(self.N_cells, size=self.num_empty, replace=False)
             for i, idx in enumerate(flat_indices):
-                ex, ey = idx % self.W, idx // self.W  # % modulo, "x /7 y" return how often y fits into x (= (x-(x%y))/y)
+                ex, ey = idx % self.W, idx // self.W  # % modulo, "x // y" return how often y fits into x (= (x-(x%y))/y)
                 self.grid[ex, ey, :] = -1
                 self.empty_locs[i] = [ex, ey]
                 
@@ -38,7 +38,9 @@ class AxelrodSchellingModel:
         self.total_steps = 0
 
     def run(self, additional_steps):
-        if additional_steps <= 0: return 0, False
+        if additional_steps <= 0: 
+            ValueError("additional steps 0 reached run()")
+            return 0, False
         threshold = self.N_cells * 100
         
         steps_done, new_updates, is_frozen = run_steps_as(

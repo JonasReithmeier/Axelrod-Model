@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
+import math
 
 def plot_axelrod_data():
     # --- 1. Load Data ---
@@ -60,10 +61,11 @@ def plot_axelrod_data():
                 
                 # Aggregate data for each q
                 stats = df_w.groupby('q')[metric_key].agg(['mean', 'std']).reset_index()
+                number_realisations = len(df_w.groupby('q')[metric_key])
                 
                 # Plot line with error bars (standard deviation)
                 plt.errorbar(
-                    stats['q'], stats['mean'], yerr=stats['std'],
+                    stats['q'], stats['mean'], yerr=stats['std']/math.sqrt(number_realisations),
                     label=f"N = {width}²",
                     marker='o', markersize=4, capsize=3, elinewidth=1, linestyle='-'
                 )
@@ -108,10 +110,11 @@ def plot_axelrod_data():
                 
                 # Aggregate data for each q
                 stats = df_w.groupby('q')[metric_key].agg(['mean', 'std']).reset_index()
+                number_realisations = len(df_w.groupby('q')[metric_key])
                 
                 # Plot line with error bars (standard deviation)
                 plt.errorbar(
-                    stats['q'], stats['mean'], yerr=stats['std'],
+                    stats['q'], stats['mean'], yerr=stats['std']/math.sqrt(number_realisations),
                     label=f"N = {width}²",
                     marker='o', markersize=4, capsize=3, elinewidth=1, linestyle='-'
                 )

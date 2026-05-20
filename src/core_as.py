@@ -77,8 +77,8 @@ def run_steps_as(grid, W, H, F, empty_locs, num_empty, T, max_steps, updates, th
         if valid_n_count > 0:
             avg_diff = diff_sum / valid_n_count
             
-        # SCHELLING PHASE: Move if unhappy
-        if avg_diff > T and num_empty > 0:
+        # SCHELLING PHASE: Move if unhappy or completely isolated
+        if (avg_diff > T and num_empty > 0) or (valid_n_count == 0):
             # Pick random empty site
             e_idx = rng.integers(0, num_empty)
             ex, ey = empty_locs[e_idx, 0], empty_locs[e_idx, 1]

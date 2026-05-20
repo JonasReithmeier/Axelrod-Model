@@ -4,7 +4,7 @@ __pycache__/
 venv/
 .env/
 #data/
-plots/
-*.csv
-*.png
+#plots/
+#*.csv
+#*.png
 *.pkl
