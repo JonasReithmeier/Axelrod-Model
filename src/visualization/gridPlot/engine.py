@@ -2,7 +2,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from .mappers import get_mapper
 from .palettes import Palettes
-from ..utils import calculate_similarity
 
 class AxelrodPlotter:
     def __init__(self, config):
@@ -69,7 +68,12 @@ class AxelrodPlotter:
                     if nx < x or ny < y: continue 
                     
                     neighbor = model.grid[nx, ny]
-                    sim = calculate_similarity(agent, neighbor, model.F)
+                    
+                    sim = 0
+                    for i in range(model.F):
+                        if agent[i] == neighbor[i]:
+                            sim += 1
+                    sim = sim / model.F
                     
                     # dont draw line of no interaction possible => makes similarity from equality differable
                     if (sim == 1) or (sim == 0):
@@ -89,7 +93,7 @@ class AxelrodPlotter:
             for y in range(model.height):
                 x_coords.append(x)
                 y_coords.append(y)
-                colors.append(self.mapper(model.grid[x, y].culture, q=model.q)) #TODO in model.py make q private and use getter     
+                colors.append(self.mapper(model.grid[x, y], q=model.q)) #TODO in model.py make q private and use getter     
         
         ax.scatter(x_coords, y_coords, c=colors,
                    cmap=self.palette['cmap'], 
