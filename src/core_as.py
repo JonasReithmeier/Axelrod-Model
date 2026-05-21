@@ -32,7 +32,7 @@ def check_frozen_as(grid, W, H, F, T, empty_locs, num_empty):
             # 1. Can it move?
             if valid_neighbors > 0:
                 avg_diff = diff_sum / valid_neighbors
-                if avg_diff > T and num_empty > 0:
+                if (1 > avg_diff > T) and (num_empty > 0):  
                     return False # Wants to move, therefore not frozen
                     
             # 2. Can it interact?
