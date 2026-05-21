@@ -72,8 +72,8 @@ class AxelrodSmallWorld:
             "total_steps": self.total_steps
         }
 
-    def load_checkpoint_data(self, cp): #TODO edges and edge_pointers are not being loaded
-        self._build_graph() # Rebuild graph deterministically instead of pickling to save space
+    def load_checkpoint_data(self, cp): 
+        self._build_graph() # Rebuild graph deterministically instead of pickling 
         self.grid = cp["grid"]
         self.updates_since_last_change = cp["updates"]
         self.rng.bit_generator.state = cp["rng_state"]
