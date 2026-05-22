@@ -16,8 +16,7 @@ from src.model_as import AxelrodSchellingModel
 
 # --- 1. The Result Listener (Background Process) ---
 def result_listener(queue, journal_path):
-    # FIXED: Added 'h' and 'T' to the fieldnames
-    fieldnames = ['width', 'N', 'q', 'F', 'h', 'T', 'seed', 's_max', 's_mean', 'steps_to_freeze', 'is_frozen']
+    fieldnames = ['width', 'N', 'q', 'F', 'h', 'T', 'seed', 's_max', 's_mean', 'steps_to_freeze', 'is_frozen', 'avg_mobility']
     
     with open(journal_path, mode='a', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -45,7 +44,6 @@ def run_single_realization(params):
     cp_dir = Path("data/schelling/checkpoints")
     cp_dir.mkdir(parents=True, exist_ok=True)
     
-    # FIXED: Added h and T to the checkpoint filename to prevent overwrites
     cp_file = cp_dir / f"cp_w{params['width']}_q{params['q']}_F{params['F']}_h{params['h']}_T{params['T']}_s{params['seed']}.pkl"
 
     model = AxelrodSchellingModel(
@@ -58,7 +56,6 @@ def run_single_realization(params):
         try:
             with open(cp_file, 'rb') as f:
                 model.load_checkpoint_data(pickle.load(f))
-            # FIXED: Corrected attribute name
             steps_already_done = model.total_steps
         except:
             model.initialize_new_simulation()
@@ -67,21 +64,19 @@ def run_single_realization(params):
 
     additional_steps = params['max_steps'] - steps_already_done
     
-    # FIXED: Corrected tuple unpacking
-    _, is_frozen = model.run(additional_steps)
-    
-    # FIXED: Corrected attribute name
-    total_steps = model.total_steps
 
+    _, is_frozen, avg_mob = model.run(additional_steps)
+    
+    total_steps = model.total_steps
     s_max, s_mean = model.get_metrics()
 
-    # FIXED: Added 'h' and 'T' to the result dictionary
     result = {
         'width': params['width'], 'N': model.N_cells, 'q': params['q'], 'F': params['F'],
         'h': params['h'], 'T': params['T'],
         'seed': params['seed'], 's_max': s_max, 's_mean': s_mean,
         'steps_to_freeze': total_steps,
-        'is_frozen': is_frozen
+        'is_frozen': is_frozen,
+        'avg_mobility': avg_mob
     }
 
     queue.put(result)
@@ -110,7 +105,6 @@ def ingest_journal_to_master(master_file, journal_file):
         if master_file.exists():
             old_df = pd.read_parquet(master_file)
             final_df = pd.concat([old_df, journal_df], ignore_index=True).reset_index(drop=True)
-            # FIXED: Added 'h' and 'T' to subset so they don't overwrite each other!
             final_df = final_df.drop_duplicates(subset=['width', 'q', 'F', 'h', 'T', 'seed'], keep='last')
         else:
             final_df = journal_df
@@ -208,7 +202,6 @@ def main():
             non_frozen = journal_df[journal_df['is_frozen'] == False]
             if not non_frozen.empty:
                 print(f"\nWARNING: {len(non_frozen)} runs in this session failed to freeze.")
-                # FIXED: Added h and T to the warning output formatter
                 print(non_frozen.groupby(['width', 'F', 'q', 'h', 'T']).size().reset_index(name='failures').head())
             
             ingest_journal_to_master(master_file, journal_file)

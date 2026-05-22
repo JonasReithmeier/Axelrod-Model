@@ -3,10 +3,7 @@ from numba import njit
 
 @njit
 def check_frozen_as(grid, W, H, F, T, empty_locs, num_empty):
-    """Exhaustive check: The model is frozen if NO ONE wants to move, and NO ONE can interact.
-    simulation is stopped when the number na of active links (i.e., links such that 0 < ωij < 1) vanishes; 
-    else no real frozen state achievable, since agents can move even with similarity to neighbors equal to 0
-    """
+    """Exhaustive check: The model is frozen if NO ONE wants to move, and NO ONE can interact."""
     for x in range(W):
         for y in range(H):
             if grid[x, y, 0] == -1: # Skip empty cells
@@ -35,7 +32,7 @@ def check_frozen_as(grid, W, H, F, T, empty_locs, num_empty):
             # 1. Can it move?
             if valid_neighbors > 0:
                 avg_diff = diff_sum / valid_neighbors
-                if (1 > avg_diff > T) and (num_empty > 0):   #TODO  not sure if "1>" correct way to check; its not: two neighbors, one sim=1 one sim=0 => avg_diff=0.5 
+                if (avg_diff > T) and (num_empty > 0):   
                     return False # Wants to move, therefore not frozen
                     
             # 2. Can it interact?
@@ -43,6 +40,44 @@ def check_frozen_as(grid, W, H, F, T, empty_locs, num_empty):
                 return False
                 
     return True
+
+@njit
+def calculate_mobility_as(grid, W, H, F, T, num_empty):
+    """Calculates the fraction of active agents that want to move."""
+    if num_empty == 0:
+        return 0.0
+        
+    movers = 0
+    active_agents = 0
+    
+    for x in range(W):
+        for y in range(H):
+            if grid[x, y, 0] == -1:
+                continue
+            active_agents += 1
+            
+            valid_neighbors = 0
+            diff_sum = 0.0
+            
+            for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+                nx, ny = (x + dx) % W, (y + dy) % H
+                if grid[nx, ny, 0] != -1:
+                    valid_neighbors += 1
+                    shared = 0
+                    for f in range(F):
+                        if grid[x, y, f] == grid[nx, ny, f]:
+                            shared += 1
+                    diff_sum += (F - shared) / F
+            
+            if valid_neighbors == 0:
+                movers += 1
+            else:
+                avg_diff = diff_sum / valid_neighbors
+                if avg_diff > T:
+                    movers += 1
+                    
+    if active_agents == 0: return 0.0
+    return movers / active_agents
 
 @njit
 def run_steps_as(grid, W, H, F, empty_locs, num_empty, T, max_steps, updates, threshold, rng):
@@ -53,7 +88,7 @@ def run_steps_as(grid, W, H, F, empty_locs, num_empty, T, max_steps, updates, th
     while steps_done < max_steps:
         x, y = rng.integers(0, W), rng.integers(0, H)
         
-        if grid[x, y, 0] == -1: # Empty cell selected
+        if grid[x, y, 0] == -1: 
             steps_done += 1
             updates += 1
             continue
@@ -61,7 +96,6 @@ def run_steps_as(grid, W, H, F, empty_locs, num_empty, T, max_steps, updates, th
         valid_n_count = 0
         diff_sum = 0.0
         
-        # Gather neighbors and calculate dissatisfaction
         for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
             nx, ny = (x + dx) % W, (y + dy) % H
             if grid[nx, ny, 0] != -1:
@@ -75,65 +109,58 @@ def run_steps_as(grid, W, H, F, empty_locs, num_empty, T, max_steps, updates, th
                         shared += 1
                 diff_sum += (F - shared) / F
                 
-        # Calculate Average Difference
         avg_diff = 0.0
         if valid_n_count > 0:
             avg_diff = diff_sum / valid_n_count
             
-        # SCHELLING PHASE: Move if unhappy or completely isolated
-        # agent that has shared sim = 0 also allowed to move, but in frozen check counts as frozen, so that simulation stops when "active (0<sim<1) connections vanish"
-        if (avg_diff > T and num_empty > 0) or (valid_n_count == 0):
-            # Pick random empty site
+        if (avg_diff > T and num_empty > 0) or (valid_n_count == 0 and num_empty > 0):
             e_idx = rng.integers(0, num_empty)
             ex, ey = empty_locs[e_idx, 0], empty_locs[e_idx, 1]
             
-            # Teleport agent
             for f in range(F):
                 grid[ex, ey, f] = grid[x, y, f]
                 grid[x, y, f] = -1
                 
-            # Update empty lookup table
             empty_locs[e_idx, 0] = x
             empty_locs[e_idx, 1] = y
+            updates += 1  
             
-            updates = 0 # State changed
-            
-        # AXELROD PHASE: Interact if happy (and has neighbors)
-        elif valid_n_count > 0:
-            n_choice = rng.integers(0, valid_n_count)
-            nx, ny = valid_neighbors_coords[n_choice, 0], valid_neighbors_coords[n_choice, 1]
-            
-            shared = 0
-            diff_count = 0
-            for f in range(F):
-                if grid[x, y, f] == grid[nx, ny, f]:
-                    shared += 1
-                else:
-                    diff_indices[diff_count] = f
-                    diff_count += 1
-                    
-            if 0 < shared < F:
-                if (rng.random() * F) < shared:
-                    target_trait = diff_indices[rng.integers(0, diff_count)]
-                    grid[x, y, target_trait] = grid[nx, ny, target_trait]
-                    updates = 0
+        else:
+            if valid_n_count > 0:
+                n_choice = rng.integers(0, valid_n_count)
+                nx, ny = valid_neighbors_coords[n_choice, 0], valid_neighbors_coords[n_choice, 1]
+                
+                shared = 0
+                diff_count = 0
+                for f in range(F):
+                    if grid[x, y, f] == grid[nx, ny, f]:
+                        shared += 1
+                    else:
+                        diff_indices[diff_count] = f
+                        diff_count += 1
+                        
+                if 0 < shared < F:
+                    if (rng.random() * F) < shared:
+                        target_trait = diff_indices[rng.integers(0, diff_count)]
+                        grid[x, y, target_trait] = grid[nx, ny, target_trait]
+                        updates = 0
+                    else:
+                        updates += 1
                 else:
                     updates += 1
             else:
                 updates += 1
-        else:
-            updates += 1 # No neighbors, stuck
-            
+        
         steps_done += 1
         
-        # Frozen check
+        # Frozen check - CHANGED RETURN SIGNATURE
         if updates >= threshold:
             if check_frozen_as(grid, W, H, F, T, empty_locs, num_empty):
-                return steps_done, updates, True
+                return steps_done, updates, 1 # STATUS 1: Classical Freeze
             else:
-                updates = 0
+                return steps_done, updates, 2 # STATUS 2: Timeout hit, start monitoring
                 
-    return steps_done, updates, False
+    return steps_done, updates, 0 # STATUS 0: Max steps reached without freezing
 
 @njit
 def get_cluster_metrics_as(grid, W, H, F):
