@@ -1,1 +1,54 @@
-create and pre calculate lookup tables for the neighbours of the agents to avoid modulo computations for each Monte Carlo Step
+!!!!!!!!!!! DONT DELETE ANY TODOS in here!!!!!!!!! THEY SERVE AS NOTES/ TIMELINE FOR THE PAPER!!!!!!!!!!!!!!!!!!!!!!
+
+Schelling-Axelrod Model:
+###########################################################
+- check_fozen(): change logic to : gather all different culture present in the grid: if none of them can interact with anyone, then its frozen
+    completely different to regular lattice, since mobility allows for a maximum of q clusters that cant interact; in the regular lattice two seperate agents with the same culture, but respectively surrounded by sim=0 agents, count as 2 distinct clusters
+
+- check_periodic_erosion():   (or add feat into check frozen function and rename to check_terminated(), then two boolean returns)
+    returns True and average mobility, if there is mobility but no interaction possible
+    ADD VARIABLE INTO DATABASE
+###############################################################
+DOESNT WORK: see samsung notes
+instead just rely on terminating after no interactions happened for n_threshold
+
+to further solidify the convergence plot mobility over time to se the entering in the periodical erosion phase
+
+...for this:
+
+-run_n_steps():
+    to recreate the mobility over time graph
+
+
+
+
+
+
+
+
+
+IF TIME LEFT:
+new model:
+mobility from schelling model but with connectivity logic from small-worlds model: if diff > T : cut connection to least similar neighbor and 
+    reconnect somewhere random in a given regime (e.g. neigbor of neigbor) or within a given regime (or sth similar)
+
+    why?
+    because I see a problem with the Schelling-Axelrod model:
+
+    fig 1 of their paper: <S_max>/N plotted against q/N independent of L and T, but dependant on h: for large h agents cant interact at the first place
+
+    OVERTHINK THIS; IF ITS REALLY TRUE: This is stupid, because large h is supposed to simulate a lot of possibilities for individuals to move in the world...=> we want to see if mobility favours globaization; but through this "holes" design choice, globalization has no chance in the first place: for low enough h yes, the cluster may erode, but its one cluster; but for big enough
+
+
+    another reason: no algorithmic frozen check for the schelling model possible
+
+
+
+
+
+
+
+
+
+
+(create and pre calculate lookup tables for the neighbours of the agents to avoid modulo computations for each Monte Carlo Step)

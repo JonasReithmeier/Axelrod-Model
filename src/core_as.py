@@ -3,7 +3,10 @@ from numba import njit
 
 @njit
 def check_frozen_as(grid, W, H, F, T, empty_locs, num_empty):
-    """Exhaustive check: The model is frozen if NO ONE wants to move, and NO ONE can interact."""
+    """Exhaustive check: The model is frozen if NO ONE wants to move, and NO ONE can interact.
+    simulation is stopped when the number na of active links (i.e., links such that 0 < ωij < 1) vanishes; 
+    else no real frozen state achievable, since agents can move even with similarity to neighbors equal to 0
+    """
     for x in range(W):
         for y in range(H):
             if grid[x, y, 0] == -1: # Skip empty cells
@@ -32,7 +35,7 @@ def check_frozen_as(grid, W, H, F, T, empty_locs, num_empty):
             # 1. Can it move?
             if valid_neighbors > 0:
                 avg_diff = diff_sum / valid_neighbors
-                if (1 > avg_diff > T) and (num_empty > 0):  
+                if (1 > avg_diff > T) and (num_empty > 0):   #TODO  not sure if "1>" correct way to check; its not: two neighbors, one sim=1 one sim=0 => avg_diff=0.5 
                     return False # Wants to move, therefore not frozen
                     
             # 2. Can it interact?
@@ -78,6 +81,7 @@ def run_steps_as(grid, W, H, F, empty_locs, num_empty, T, max_steps, updates, th
             avg_diff = diff_sum / valid_n_count
             
         # SCHELLING PHASE: Move if unhappy or completely isolated
+        # agent that has shared sim = 0 also allowed to move, but in frozen check counts as frozen, so that simulation stops when "active (0<sim<1) connections vanish"
         if (avg_diff > T and num_empty > 0) or (valid_n_count == 0):
             # Pick random empty site
             e_idx = rng.integers(0, num_empty)
