@@ -41,7 +41,7 @@ class AxelrodSchellingModel:
         if additional_steps <= 0: 
             return 0, False, -1.0 
             
-        threshold = self.N_cells * 100
+        threshold = self.N_cells * 1000
         
         steps_left = additional_steps
         total_steps_this_call = 0

@@ -1,29 +1,3 @@
-!!!!!!!!!!! DONT DELETE ANY TODOS in here!!!!!!!!! THEY SERVE AS NOTES/ TIMELINE FOR THE PAPER!!!!!!!!!!!!!!!!!!!!!!
-
-Schelling-Axelrod Model:
-###########################################################
-- check_fozen(): change logic to : gather all different culture present in the grid: if none of them can interact with anyone, then its frozen
-    completely different to regular lattice, since mobility allows for a maximum of q clusters that cant interact; in the regular lattice two seperate agents with the same culture, but respectively surrounded by sim=0 agents, count as 2 distinct clusters
-
-- check_periodic_erosion():   (or add feat into check frozen function and rename to check_terminated(), then two boolean returns)
-    returns True and average mobility, if there is mobility but no interaction possible
-    ADD VARIABLE INTO DATABASE
-###############################################################
-DOESNT WORK: see samsung notes
-instead just rely on terminating after no interactions happened for n_threshold
-
-to further solidify the convergence plot mobility over time to se the entering in the periodical erosion phase
-
-...for this:
-
--run_n_steps():
-    to recreate the mobility over time graph
-
-
-
-
-
-
 
 
 

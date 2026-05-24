@@ -1,97 +1,183 @@
 import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
 import numpy as np
 from pathlib import Path
 
-def plot_as_phase_transition(F_val=5, q_val=10, data_path="data/task3/axelrod_as_master_results.parquet"):
-    """
-    Plots the Axelrod-Schelling phase transition.
-    X-axis: Tolerance (T)
-    Y-axis: Largest Cultural Cluster (s_max)
-    Lines: Different densities of empty sites (h)
-    """
-    # 1. Path Management
-    # Update this path if you saved your Task 3 parquet file somewhere else!
-    file_path = Path(data_path)
-    if not file_path.exists():
-        print(f"Error: Could not find data file at {file_path}")
-        print("Please check the 'data_path' variable in the script.")
+def main():
+    db_path = Path("data/schelling/schelling_master_results.parquet")
+    if not db_path.exists():
+        print(f"Database not found at {db_path}")
         return
 
-    # 2. Load and Filter Data
-    df = pd.read_parquet(file_path)
-
-    # Filter for the specific F and q used in the config
-    df_filtered = df[(df['F'] == F_val) & (df['q'] == q_val)]
+    # 1. Load Data
+    print("Loading database...")
+    df = pd.read_parquet(db_path)
     
-    if df_filtered.empty:
-        print(f"Error: No data found for F={F_val} and q={q_val} in the database.")
-        return
+    # 2. Calculate scaled q (X-axis)
+    df['N'] = df['width'] * df['width']
+    df['q_N'] = df['q'] / df['N']
 
-    # 3. Aggregate Data: Mean and StdDev for s_max grouped by h and T
-    grouped = df_filtered.groupby(['h', 'T'])['s_max'].agg(['mean', 'std']).reset_index()
-
-    # 4. Setup Plot
-    fig, ax = plt.subplots(figsize=(10, 6), dpi=200)
-    
-    # Get unique 'h' values and sort them
-    h_values = sorted(grouped['h'].unique())
-    
-    # Use a colormap for different empty site densities
-    colors = cm.plasma(np.linspace(0.1, 0.9, len(h_values)))
-
-    # 5. Plot lines with error bars for each 'h'
-    for i, h in enumerate(h_values):
-        subset = grouped[grouped['h'] == h].sort_values(by='T')
-        
-        T_vals = subset['T']
-        mean_smax = subset['mean']
-        std_smax = subset['std'].fillna(0) # Fill NaN with 0 if only 1 realization exists
-        
-        ax.errorbar(T_vals, mean_smax, yerr=std_smax, fmt='-o', 
-                    markersize=6, linewidth=2, capsize=4, capthick=1.5, 
-                    color=colors[i], label=f'h = {h}')
-
-    # 6. Formatting
-    ax.set_xlabel('Tolerance ($T$)', fontsize=14)
-    ax.set_ylabel(r'Largest Cultural Cluster $\langle S_{max} \rangle / N_{active}$', fontsize=14)
-    
-    # Dynamic Title
-    ax.set_title(f'Axelrod-Schelling Model: Impact of Mobility\n(Traits $q={q_val}$, Features $F={F_val}$)', 
-                 fontsize=15, pad=15)
-    
-    ax.set_ylim(-0.05, 1.05)
-    # Set X-axis to go from 0 (Strict/Intolerant) to 1.0 (Pure Axelrod/Tolerant)
-    ax.set_xlim(0.0, 1.05) 
-    
-    ax.grid(True, linestyle='--', alpha=0.6)
-    ax.tick_params(axis='both', which='major', labelsize=12)
-    
-    # Legend setup
-    ax.legend(title="Empty Density ($h$)", fontsize=11, title_fontsize=12, loc='lower right')
-
-    # Add descriptive text to explain the physics on the plot
-    ax.text(0.05, 0.85, 'Segregated Phase\n(Mobility Fragments Culture)', 
-            fontsize=11, bbox=dict(facecolor='white', alpha=0.8, edgecolor='gray'))
-    ax.text(0.70, 0.85, 'Globalized Phase\n(Stable Consensus)', 
-            fontsize=11, bbox=dict(facecolor='white', alpha=0.8, edgecolor='gray'))
-
-    # 7. Output Management
+    # 3. Setup output directory
     out_dir = Path("plots/task3")
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    # Filter for F=3 as per the new config
+    target_F = 3
+    print(f"Filtering data for F={target_F}...")
+    df_f = df[df['F'] == target_F]
+
+    # Matplotlib styling for publication-quality plots
+    plt.rcParams.update({
+        'font.size': 12,
+        'axes.labelsize': 14,
+        'legend.fontsize': 10,
+        'xtick.direction': 'in',
+        'ytick.direction': 'in',
+        'xtick.top': True,
+        'ytick.right': True,
+        'axes.grid': True,
+        'grid.alpha': 0.3,
+        'grid.linestyle': '--'
+    })
+
+    # =========================================================
+    # PLOT 1: Low Empty Density (Reproducing the new FIG 1)
+    # Fixed: h = 0.05
+    # Varying: L in [20, 30, 40] and T in [0.2, 0.8]
+    # =========================================================
+    print("Generating Plot 1 (Low Empty Density h=0.05)...")
     
-    out_file = out_dir / f"schelling_transition_F{F_val}_q{q_val}.png"
+    mask_p1 = np.isclose(df_f['h'], 0.05)
+    df_p1 = df_f[mask_p1]
+    
+    plt.figure(figsize=(7, 5))
+    
+    widths_p1 = [20, 30, 40]
+    Ts_p1 = [0.2, 0.8] # Using your config's T values instead of 0.3/0.7
+    
+    # Mapping exact markers and colors from the paper
+    styles_p1 = {
+        (20, 0.2): {'marker': 'o', 'color': 'gray'},
+        (20, 0.8): {'marker': 's', 'color': 'coral'},
+        (30, 0.2): {'marker': 'D', 'color': 'forestgreen'},
+        (30, 0.8): {'marker': '^', 'color': 'mediumpurple'},
+        (40, 0.2): {'marker': 'v', 'color': 'orchid'},
+        (40, 0.8): {'marker': '>', 'color': 'palevioletred'}
+    }
+
+    plotted_lines = 0
+    for w in widths_p1:
+        for t_val in Ts_p1:
+            d = df_p1[(df_p1['width'] == w) & np.isclose(df_p1['T'], t_val)]
+            if d.empty: 
+                continue
+            
+            grouped = d.groupby('q_N')['s_max'].mean().reset_index().sort_values('q_N')
+            style = styles_p1[(w, t_val)]
+            
+            plt.plot(grouped['q_N'], grouped['s_max'], 
+                     marker=style['marker'], linestyle='--', linewidth=1,
+                     color=style['color'], markerfacecolor='none', markeredgewidth=1.2,
+                     label=f'L={w} T={t_val}')
+            plotted_lines += 1
+
+    plt.xlabel('q/N')
+    plt.ylabel(r'$\langle S_{max} \rangle / N$')
+    plt.xlim(0, 6)
+    plt.ylim(0, 1.05)
+    
+    if plotted_lines > 0:
+        plt.legend(loc='upper right', framealpha=1.0, edgecolor='black')
+        
     plt.tight_layout()
-    plt.savefig(out_file)
-    plt.close(fig) 
+    plt.savefig(out_dir / "fig1_low_density_h0.05.png", dpi=300, bbox_inches='tight')
+    plt.close()
+
+
+    # =========================================================
+    # PLOT 2: Varying Lattice Size L (Reproducing FIG 2a)
+    # Fixed: h = 0.5, T = 0.8 (Using 0.8 from config instead of 0.7)
+    # =========================================================
+    print("Generating Plot 2 (Lattice Size Scaling)...")
     
-    print(f"Success! Plot saved to: {out_file}")
+    mask_p2 = np.isclose(df_f['h'], 0.5) & np.isclose(df_f['T'], 0.8)
+    df_p2 = df_f[mask_p2]
+    
+    plt.figure(figsize=(7, 5))
+    
+    widths_p2 = [10, 20, 30, 40]
+    markers_L = {10: 'v', 20: 'o', 30: 's', 40: 'D'}
+    colors_L = {10: 'forestgreen', 20: 'gray', 30: 'coral', 40: 'mediumpurple'}
+
+    plotted_lines = 0
+    for w in widths_p2:
+        d = df_p2[df_p2['width'] == w]
+        if d.empty: 
+            continue
+        
+        grouped = d.groupby('q_N')['s_max'].mean().reset_index().sort_values('q_N')
+        
+        plt.plot(grouped['q_N'], grouped['s_max'], 
+                 marker=markers_L[w], linestyle='--', linewidth=1,
+                 color=colors_L[w], markerfacecolor='none', markeredgewidth=1.2,
+                 label=f'L={w}')
+        plotted_lines += 1
+
+    plt.xlabel('q/N')
+    plt.ylabel(r'$\langle S_{max} \rangle / N$')
+    plt.xlim(0, 6)
+    plt.ylim(0, 1.05)
+    
+    if plotted_lines > 0:
+        plt.legend(loc='upper right', framealpha=1.0, edgecolor='black')
+        
+    plt.tight_layout()
+    plt.savefig(out_dir / "fig2a_lattice_scaling_h0.5.png", dpi=300, bbox_inches='tight')
+    plt.close()
+
+
+    # =========================================================
+    # PLOT 3: Varying Tolerance T (Reproducing FIG 2b)
+    # Fixed: h = 0.5, L = 40
+    # =========================================================
+    print("Generating Plot 3 (Tolerance Scaling)...")
+    
+    mask_p3 = np.isclose(df_f['h'], 0.5) & (df_f['width'] == 40)
+    df_p3 = df_f[mask_p3]
+    
+    plt.figure(figsize=(7, 5))
+    
+    Ts_p3 = [0.2, 0.5, 0.8]
+    markers_T = {0.2: '^', 0.5: 's', 0.8: 'o'}
+    colors_T = {0.2: 'orchid', 0.5: 'coral', 0.8: 'gray'}
+
+    plotted_lines = 0
+    for t_val in Ts_p3:
+        d = df_p3[np.isclose(df_p3['T'], t_val)]
+        if d.empty: 
+            continue
+        
+        grouped = d.groupby('q_N')['s_max'].mean().reset_index().sort_values('q_N')
+        
+        plt.plot(grouped['q_N'], grouped['s_max'], 
+                 marker=markers_T[t_val], linestyle='--', linewidth=1,
+                 color=colors_T[t_val], markerfacecolor='none', markeredgewidth=1.2,
+                 label=f'T={t_val}')
+        plotted_lines += 1
+
+    plt.xlabel('q/N')
+    plt.ylabel(r'$\langle S_{max} \rangle / N$')
+    plt.xlim(0, 6)
+    plt.ylim(0, 1.05)
+    
+    if plotted_lines > 0:
+        plt.legend(loc='upper right', framealpha=1.0, edgecolor='black')
+        
+    plt.tight_layout()
+    plt.savefig(out_dir / "fig2b_tolerance_scaling_h0.5.png", dpi=300, bbox_inches='tight')
+    plt.close()
+
+    print(f"\nDone! Plots saved to {out_dir}/")
 
 if __name__ == "__main__":
-    # Ensure the path matches wherever your runner_as.py saves the parquet file!
-    plot_as_phase_transition(
-        F_val=5, 
-        q_val=10, 
-        data_path="data/schelling/schelling_master_results.parquet"
-    )
+    main()
