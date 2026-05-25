@@ -80,7 +80,7 @@ sw_experiment:
 ####################################################################################################################
 as_experiment:
   master_seed: 42
-  M_realizations: 1
+  M_realizations: 100
   max_steps: 100000000
   transient_mcs: 10000000
   sweep:
