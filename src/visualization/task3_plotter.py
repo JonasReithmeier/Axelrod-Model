@@ -46,8 +46,9 @@ def main():
     # Varying: L in [20, 30, 40] and T in [0.2, 0.8]
     # =========================================================
     print("Generating Plot 1 (Low Empty Density h=0.05)...")
+    h1 = 0.05
     
-    mask_p1 = np.isclose(df_f['h'], 0.05)
+    mask_p1 = np.isclose(df_f['h'], h1)
     df_p1 = df_f[mask_p1]
     
     plt.figure(figsize=(7, 5))
@@ -83,6 +84,7 @@ def main():
 
     plt.xlabel('q/N')
     plt.ylabel(r'$\langle S_{max} \rangle / N$')
+    plt.title(f'Phase Transition on Schelling-Axelrod Model\n($F={target_F}$, $h={h1}$)', fontsize=15, pad=15)
     plt.xlim(0, 6)
     plt.ylim(0, 1.05)
     
@@ -99,8 +101,10 @@ def main():
     # Fixed: h = 0.5, T = 0.8 (Using 0.8 from config instead of 0.7)
     # =========================================================
     print("Generating Plot 2 (Lattice Size Scaling)...")
+    h2 = 0.5
+    T2 = 0.8
     
-    mask_p2 = np.isclose(df_f['h'], 0.5) & np.isclose(df_f['T'], 0.8)
+    mask_p2 = np.isclose(df_f['h'], h2) & np.isclose(df_f['T'], T2)
     df_p2 = df_f[mask_p2]
     
     plt.figure(figsize=(7, 5))
@@ -125,6 +129,7 @@ def main():
 
     plt.xlabel('q/N')
     plt.ylabel(r'$\langle S_{max} \rangle / N$')
+    plt.title(f'Phase Transition on Schelling-Axelrod Model\n($F={target_F}$, $h={h2}$, $T={T2}$)', fontsize=15, pad=15)
     plt.xlim(0, 6)
     plt.ylim(0, 1.05)
     
@@ -167,6 +172,7 @@ def main():
 
     plt.xlabel('q/N')
     plt.ylabel(r'$\langle S_{max} \rangle / N$')
+    plt.title(f'Phase Transition on Schelling-Axelrod Model\n($F={target_F}$, $h={h2}$, $L=40$)', fontsize=15, pad=15)
     plt.xlim(0, 6)
     plt.ylim(0, 1.05)
     

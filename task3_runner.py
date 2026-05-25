@@ -46,7 +46,7 @@ def run_single_realization(params):
         if additional_steps <= 0:
             return None # Already finished, safe abort
 
-        _, is_frozen, avg_mob = model.run(additional_steps)
+        _, is_frozen, avg_mob = model.run(additional_steps, MCS_before_check = params['transient_mcs'])  
         
         total_steps = model.total_steps
         s_max, s_mean = model.get_metrics()
@@ -163,7 +163,8 @@ def main():
                 tasks.append({
                     'q': q_val, 'width': w_val, 'F': f_val, 'h': h_val, 'T': T_val,
                     'max_steps': exp_cfg['max_steps'], 
-                    'seed': active_seed
+                    'seed': active_seed,
+                    'transient_mcs': exp_cfg['transient_mcs']
                 })
 
     if not tasks:
