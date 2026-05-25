@@ -1,6 +1,6 @@
 grid_visualization:
   # Options: "hash", "q-base", "neighbor-similarity-hash", "neighbor-similarity-q-base"
-  mode: "neighbor-similarity-hash"
+  mode: "neighbor-similarity-q-base"
   #Options: "light", "dark", "chaotic", "vibrant"
   theme: "light"
   base_node_setting: 40000 # Increase to make all nodes bigger
@@ -8,9 +8,9 @@ grid_visualization:
 
 # Settings for standard single runs (main.py)
 test_simulation_defaults:
-  width: 20
-  height: 20
-  features: 3
+  width: 10
+  height: 10
+  features: 5
   traits: 10
   seed: 42
   max_steps: 200000 # High limit; we rely on the frozen check
@@ -79,10 +79,11 @@ sw_experiment:
 
 as_experiment:
   master_seed: 42
-  M_realizations: 100
+  M_realizations: 1
   max_steps: 100000000
+  transient_mcs: 10000000
   sweep:
-    width: [10, 20, 30, 40]
+    width: [20] #[10, 20, 30, 40]
     F: [3]
 
     # Carefully curated to map q/N from 0.05 to 5.0 across all widths
@@ -108,7 +109,17 @@ as_experiment:
       ]
 
     # h = Fraction of empty sites
-    h: [0.05, 0.5]
+    h: [0.5] #[0.05, 0.5]
 
     # T = Tolerance
-    T: [0.2, 0.5, 0.8]
+    T: [0.2, 0.8] # 0.5,
+
+as_mobility_experiment:
+  seed: 42
+  max_steps: 20000000 # 2x10^7 steps like the paper
+  sweep:
+    width: [10, 20, 30, 40]
+    F: [3]
+    q: [90, 1350, 1800, 4500] # For L=30 (N=900), these yield q/N = 0.1, 1.5, 2.0, 5.0
+    h: [0.5]
+    T: [0.2, 0.8]
