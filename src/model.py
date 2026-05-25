@@ -52,3 +52,32 @@ class FastAxelrodModel_regularLattice:
         self.updates_since_last_change = cp["updates"]
         self.rng.bit_generator.state = cp["rng_state"] # Restore Exact RNG State!
         self.total_steps_done = cp['prev_steps']
+
+
+    def single_step_ONLY_visualization(self):
+        diff_indices = np.empty(self.F, dtype=np.int32)
+        # Use the explicit RNG passed from Python
+        x = self.rng.integers(0, self.width)
+        y = self.rng.integers(0, self.height)
+        
+        direction = self.rng.integers(0, 4)
+        nx, ny = x, y
+        if direction == 0: nx = (x + 1) % self.width
+        elif direction == 1: nx = (x - 1) % self.width
+        elif direction == 2: ny = (y + 1) % self.height
+        else: ny = (y - 1) % self.height
+            
+        shared = 0
+        diff_count = 0
+        for i in range(self.F):
+            if self.grid[x, y, i] == self.grid[nx, ny, i]:
+                shared += 1
+            else:
+                diff_indices[diff_count] = i
+                diff_count += 1
+                
+        # Interaction Rule
+        if 0 < shared < self.F:
+            if self.rng.random() * self.F < shared:
+                target_trait = diff_indices[self.rng.integers(0, diff_count)]
+                self.grid[x, y, target_trait] = self.grid[nx, ny, target_trait]

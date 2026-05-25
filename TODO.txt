@@ -1,1 +1,28 @@
-create and pre calculate lookup tables for the neighbours of the agents to avoid modulo computations for each Monte Carlo Step
+
+
+
+IF TIME LEFT:
+new model:
+mobility from schelling model but with connectivity logic from small-worlds model: if diff > T : cut connection to least similar neighbor and 
+    reconnect somewhere random in a given regime (e.g. neigbor of neigbor) or within a given regime (or sth similar)
+
+    why?
+    because I see a problem with the Schelling-Axelrod model:
+
+    fig 1 of their paper: <S_max>/N plotted against q/N independent of L and T, but dependant on h: for large h agents cant interact at the first place
+
+    OVERTHINK THIS; IF ITS REALLY TRUE: This is stupid, because large h is supposed to simulate a lot of possibilities for individuals to move in the world...=> we want to see if mobility favours globaization; but through this "holes" design choice, globalization has no chance in the first place: for low enough h yes, the cluster may erode, but its one cluster; but for big enough
+
+
+    another reason: no algorithmic frozen check for the schelling model possible
+
+
+
+
+
+
+
+
+
+
+(create and pre calculate lookup tables for the neighbours of the agents to avoid modulo computations for each Monte Carlo Step)

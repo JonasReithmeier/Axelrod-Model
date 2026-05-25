@@ -80,16 +80,36 @@ sw_experiment:
 ####################################################################################################################
 as_experiment:
   master_seed: 42
-  M_realizations: 10
+  M_realizations: 100
   max_steps: 100000000
   sweep:
-    width: [40] # 40x40 grid = 1600 cells
-    F: [5]
-    q: [10]
+    width: [10, 20, 30, 40]
+    F: [3]
 
-    # h = Fraction of empty sites (0.05 = 5% empty, 0.2 = 20% empty)
-    h: [0.05, 0.1, 0.2, 0.4]
+    # Carefully curated to map q/N from 0.05 to 5.0 across all widths
+    q:
+      [
+        10,
+        20,
+        40,
+        80,
+        120,
+        160,
+        200,
+        300,
+        400,
+        600,
+        800,
+        1200,
+        1600,
+        2400,
+        3200,
+        4800,
+        8000,
+      ]
 
-    # T = Tolerance (Max allowed difference fraction)
-    # Sweeping from Low tolerance (strict) to High tolerance (relaxed)
-    T: [0.1, 0.3, 0.5, 0.7, 0.9, 1.0]
+    # h = Fraction of empty sites
+    h: [0.05, 0.5]
+
+    # T = Tolerance
+    T: [0.2, 0.5, 0.8]
