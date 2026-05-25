@@ -30,7 +30,7 @@ experiment:
     width: [5, 10, 15, 20, 30, 40, 50] #
 
   # task22: small worlds network
-
+##################################################################################################
 sw_experiment:
   master_seed: 42
   # 30 realizations gives excellent statistical smoothness for phase transition plots
@@ -77,6 +77,7 @@ sw_experiment:
     # We sweep densely from 2 to 100 to catch the exact moment the phase transition happens.
     q: [2, 5, 10, 15, 20, 25, 30, 40, 50, 60, 80, 100]
 
+####################################################################################################################
 as_experiment:
   master_seed: 42
   M_realizations: 10
