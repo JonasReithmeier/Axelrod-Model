@@ -22,7 +22,7 @@ def main():
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # Filter for F=3 as per the new config
-    target_F = 3
+    target_F = 10
     print(f"Filtering data for F={target_F}...")
     df_f = df[df['F'] == target_F]
 

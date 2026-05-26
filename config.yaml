@@ -80,12 +80,12 @@ sw_experiment:
 ####################################################################################################################
 as_experiment:
   master_seed: 42
-  M_realizations: 10
+  M_realizations: 3
   max_mcs: 100000
   transient_mcs: 1000
   sweep:
     L: [10, 20, 30, 40]
-    F: [3]
+    F: [3, 10]
 
     # Carefully curated to map q/N from 0.05 to 5.0 across all widths
     q:
