@@ -1,22 +1,26 @@
-study_name: overnight_sweep_v1
-checkpoint_dir: checkpoints/overnight_v1
-steps_per_chunk: 300000
-n_parallel: 23 # set to your CPU count minus 1
+study_name: overnight_v2
+checkpoint_dir: checkpoints/overnight_v2
+steps_per_chunk: 500000
+n_parallel: 23
 
 sweep:
   mode: grid
   params:
-    p: [0.05, 0.1, 0.4] # ordered: lattice-like, small-world, near-random
-    alpha: [0.5, 1.0, 2.0] # weak, medium, strong dev effect
-    dis_threshold: [0.3, 0.5, 0.7] # low/mid/high cut sensitivity
-    weight_mode: [0, 2, 3] # skip quadratic (too similar to linear for first pass)
-    dev_mode: [0, 2, 3] # skip normal (too similar to uniform for first pass)
-    dev_param: [0.15] # single value for first pass: moderate pareto/bimodal shape
+    # Topology
+    p: [0.05, 0.15, 0.4, 0.8] # lattice → small-world → random
+    # Development effect
+    weight_mode: [0, 1, 2, 3] # all four modes
+    alpha: [0.5, 1.5, 3.0] # weak / medium / strong
+    # Dissatisfaction threshold
+    dis_threshold: [0.25, 0.4, 0.6, 0.75] # tight → loose rewiring trigger
+    # Inequality structure
+    dev_mode: [0, 2] # uniform vs pareto (most contrast)
+    dev_param: [0.15] # single shape param, expand in v3
 
 fixed:
-  N: 150 # large enough to be meaningful, small enough to be fast
+  N: 150
   k: 4
   F: 5
   q: 10
   seed: 42
-  max_steps: 5000000
+  max_steps: 20000000

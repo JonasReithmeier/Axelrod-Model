@@ -42,12 +42,12 @@ optuna.logging.set_verbosity(optuna.logging.WARNING)
 
 @ray.remote
 def ray_run_trial(params, checkpoint_dir, steps_per_chunk):
-    """Thin Ray wrapper — each trial runs in its own worker process."""
-    import logging
+    import sys, os, logging
+    # Make sure the repo root is on the path for every worker process
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     logging.basicConfig(level=logging.INFO)
-    from novelModel_runner import run_trial as _run_trial
+    from novelModel.novelModel_runner import run_trial as _run_trial
     return _run_trial(params, checkpoint_dir=checkpoint_dir, steps_per_chunk=steps_per_chunk)
-
 
 # ---------------------------------------------------------------------------
 # Config loading & param expansion
