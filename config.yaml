@@ -34,7 +34,7 @@ experiment:
 sw_experiment:
   master_seed: 42
   # 30 realizations gives excellent statistical smoothness for phase transition plots
-  M_realizations: 500
+  M_realizations: 600
 
   # 200 Million step cap. Runs near the critical phase transition will take
   # a long time to freeze. This ensures they have room to finish without infinite loops.
@@ -80,11 +80,11 @@ sw_experiment:
 ####################################################################################################################
 as_experiment:
   master_seed: 42
-  M_realizations: 100
-  max_steps: 100000000
-  transient_mcs: 10000000
+  M_realizations: 10
+  max_mcs: 100000
+  transient_mcs: 1000
   sweep:
-    width: [20] #[10, 20, 30, 40]
+    L: [10, 20, 30, 40]
     F: [3]
 
     # Carefully curated to map q/N from 0.05 to 5.0 across all widths
@@ -110,7 +110,7 @@ as_experiment:
       ]
 
     # h = Fraction of empty sites
-    h: [0.5] #[0.05, 0.5]
+    h: [0.05, 0.5] #[0.05, 0.5]
 
     # T = Tolerance
     T: [0.2, 0.8] # 0.5,
@@ -121,6 +121,6 @@ as_mobility_experiment:
   sweep:
     width: [10, 20, 30, 40]
     F: [3]
-    q: [90, 1350, 1800, 4500] # For L=30 (N=900), these yield q/N = 0.1, 1.5, 2.0, 5.0
+    q: [90, 1350, 1800, 2400, 4500] # For L=30 (N=900), these yield q/N = 0.1, 1.5, 2.0, 5.0
     h: [0.5]
     T: [0.2, 0.8]

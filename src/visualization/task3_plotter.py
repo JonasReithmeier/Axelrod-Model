@@ -14,7 +14,7 @@ def main():
     df = pd.read_parquet(db_path)
     
     # 2. Calculate scaled q (X-axis)
-    df['N'] = df['width'] * df['width']
+    df['N'] = df['L'] * df['L']
     df['q_N'] = df['q'] / df['N']
 
     # 3. Setup output directory
@@ -69,7 +69,7 @@ def main():
     plotted_lines = 0
     for w in widths_p1:
         for t_val in Ts_p1:
-            d = df_p1[(df_p1['width'] == w) & np.isclose(df_p1['T'], t_val)]
+            d = df_p1[(df_p1['L'] == w) & np.isclose(df_p1['T'], t_val)]
             if d.empty: 
                 continue
             
@@ -102,7 +102,7 @@ def main():
     # =========================================================
     print("Generating Plot 2 (Lattice Size Scaling)...")
     h2 = 0.5
-    T2 = 0.8
+    T2 = 0.2
     
     mask_p2 = np.isclose(df_f['h'], h2) & np.isclose(df_f['T'], T2)
     df_p2 = df_f[mask_p2]
@@ -115,7 +115,7 @@ def main():
 
     plotted_lines = 0
     for w in widths_p2:
-        d = df_p2[df_p2['width'] == w]
+        d = df_p2[df_p2['L'] == w]
         if d.empty: 
             continue
         
@@ -147,7 +147,7 @@ def main():
     # =========================================================
     print("Generating Plot 3 (Tolerance Scaling)...")
     
-    mask_p3 = np.isclose(df_f['h'], 0.5) & (df_f['width'] == 40)
+    mask_p3 = np.isclose(df_f['h'], 0.5) & (df_f['L'] == 40)
     df_p3 = df_f[mask_p3]
     
     plt.figure(figsize=(7, 5))
