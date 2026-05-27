@@ -377,7 +377,7 @@ def main():
     cp_dir = data_path / "checkpoints"
 
     # Initialise Ray. num_cpus=None → use all available cores.
-    ray.init(ignore_reinit_error=True, num_cpus=os.cpu_count())
+    ray.init(ignore_reinit_error=True, num_cpus=os.cpu_count()-1)
 
     # Boot the result sink actor (persistent for the whole run).
     sink = ResultSink.remote(str(master_file), str(cp_dir))
