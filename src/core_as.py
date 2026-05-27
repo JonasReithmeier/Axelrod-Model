@@ -158,9 +158,8 @@ def perform_agent_step(grid, F, empty_locs, num_empty, T, node, updates, rng, di
                 if (rng.random() * F) < shared:
                     target_trait = diff_indices[rng.integers(0, diff_count)]
                     grid[node, target_trait] = grid[n_node, target_trait]
-                    return 0 # An interaction successfully updated the grid
-                else:
-                    return updates + 1
+                return 0 
+            
             else:
                 return updates + 1
         else:
