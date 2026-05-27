@@ -18,3 +18,77 @@ to further solidify the convergence plot mobility over time to se the entering i
 
 -run_n_steps():
     to recreate the mobility over time graph  
+
+
+
+
+2026-05-28 00:22:37,138 INFO worker.py:2012 -- Started a local Ray instance.
+C:\Users\jonas\AppData\Local\Programs\Python\Python312\Lib\site-packages\ray\_private\worker.py:2051: FutureWarning: Tip: In future versions of Ray, Ray will no longer override accelerator visible devices env var if num_gpus=0 or num_gpus=None (default). To enable this behavior and turn off this error message, set RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
+  warnings.warn(
+DB loaded: 80 existing realizations.
+Submitting 5360 tasks in 'parallel' mode.
+Graceful stop: create a file named STOP, or press Ctrl+C.
+
+(raylet) Stack (most recent call first):
+(raylet)   File "C:\Users\jonas\AppData\Local\Programs\Python\Python312\Lib\site-packages\ray\_private\worker.py", line 628 in job_logging_config
+(raylet)   File "C:\Users\jonas\AppData\Local\Programs\Python\Python312\Lib\site-packages\ray\_private\worker.py", line 2801 in disconnect
+(raylet)   File "C:\Users\jonas\AppData\Local\Programs\Python\Python312\Lib\site-packages\ray\_private\worker.py", line 2132 in shutdown
+(raylet)   File "C:\Users\jonas\AppData\Local\Programs\Python\Python312\Lib\site-packages\ray\_private\worker.py", line 1143 in wrapper
+(run_realization pid=30132) Unable to allocate internal buffer.
+(run_realization pid=30132) Traceback (most recent call last):
+(run_realization pid=30132)   File "C:\Users\jonas\AppData\Local\Programs\Python\Python312\Lib\site-packages\ray\_private\serialization.py", line 582, in deserialize_objects
+(run_realization pid=30132)     obj = self._deserialize_object(
+(run_realization pid=30132)           ^^^^^^^^^^^^^^^^^^^^^^^^^
+(run_realization pid=30132)   File "C:\Users\jonas\AppData\Local\Programs\Python\Python312\Lib\site-packages\ray\_private\serialization.py", line 431, in _deserialize_object
+(run_realization pid=30132)     return self._deserialize_msgpack_data(
+(run_realization pid=30132)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(run_realization pid=30132)   File "C:\Users\jonas\AppData\Local\Programs\Python\Python312\Lib\site-packages\ray\_private\serialization.py", line 375, in _deserialize_msgpack_data
+(run_realization pid=30132)     msgpack_data, pickle5_data = split_buffer(data)
+(run_realization pid=30132)                                  ^^^^^^^^^^^^^^^^^^
+(run_realization pid=30132)   File "python\\ray\\includes/serialization.pxi", line 205, in ray._raylet.split_buffer
+(run_realization pid=30132)   File "msgpack/_unpacker.pyx", line 372, in msgpack._cmsgpack.Unpacker.__init__
+(run_realization pid=30132) MemoryError: Unable to allocate internal buffer.
+(raylet)   File "C:\Users\jonas\AppData\Local\Programs\Python\Python312\Lib\site-packages\ray\_private\client_mode_hook.py", line 107 in wrapper
+
+============================================
+Completed in 0:00:46
+Tasks processed this session : 0
+Total rows in master DB      : 80
+============================================
+Traceback (most recent call last):
+  File "d:\University\Erasmus_2025_26\segundo semestre\CompSys\Axelrod-Model\task3_runner.py", line 462, in <module>
+    main()
+  File "d:\University\Erasmus_2025_26\segundo semestre\CompSys\Axelrod-Model\task3_runner.py", line 434, in main
+    run_parallel_batch(tasks, sink, n_concurrent)
+  File "d:\University\Erasmus_2025_26\segundo semestre\CompSys\Axelrod-Model\task3_runner.py", line 335, in run_parallel_batch
+    result = ray.get(ref)
+             ^^^^^^^^^^^^
+  File "C:\Users\jonas\AppData\Local\Programs\Python\Python312\Lib\site-packages\ray\_private\auto_init_hook.py", line 22, in auto_init_wrapper
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\jonas\AppData\Local\Programs\Python\Python312\Lib\site-packages\ray\_private\client_mode_hook.py", line 107, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\jonas\AppData\Local\Programs\Python\Python312\Lib\site-packages\ray\_private\worker.py", line 2980, in get
+    values, debugger_breakpoint = worker.get_objects(
+                                  ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\jonas\AppData\Local\Programs\Python\Python312\Lib\site-packages\ray\_private\worker.py", line 1023, in get_objects
+    raise value.as_instanceof_cause()
+ray.exceptions.RayTaskError(RaySystemError): ray::run_realization() (pid=30132, ip=127.0.0.1)
+  File "python\\ray\\_raylet.pyx", line 1806, in ray._raylet.execute_task
+  File "python\\ray\\_raylet.pyx", line 1840, in ray._raylet.execute_task
+  File "python\\ray\\_raylet.pyx", line 899, in ray._raylet.raise_if_dependency_failed
+ray.exceptions.RaySystemError: System error: Unable to allocate internal buffer.
+traceback: Traceback (most recent call last):
+  File "C:\Users\jonas\AppData\Local\Programs\Python\Python312\Lib\site-packages\ray\_private\serialization.py", line 582, in deserialize_objects
+    obj = self._deserialize_object(
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\jonas\AppData\Local\Programs\Python\Python312\Lib\site-packages\ray\_private\serialization.py", line 431, in _deserialize_object
+    return self._deserialize_msgpack_data(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\jonas\AppData\Local\Programs\Python\Python312\Lib\site-packages\ray\_private\serialization.py", line 375, in _deserialize_msgpack_data
+    msgpack_data, pickle5_data = split_buffer(data)
+                                 ^^^^^^^^^^^^^^^^^^
+  File "python\\ray\\includes/serialization.pxi", line 205, in ray._raylet.split_buffer
+  File "msgpack/_unpacker.pyx", line 372, in msgpack._cmsgpack.Unpacker.__init__
+MemoryError: Unable to allocate internal buffer.
