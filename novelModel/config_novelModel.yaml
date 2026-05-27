@@ -1,26 +1,22 @@
-study_name: overnight_v2
-checkpoint_dir: checkpoints/overnight_v2
-steps_per_chunk: 500000
-n_parallel: 23
+study_name: overnight_v4
+checkpoint_dir: checkpoints/overnight_v4
+steps_per_chunk: 2000000
+n_parallel: 22
 
 sweep:
   mode: grid
   params:
-    # Topology
-    p: [0.05, 0.15, 0.4, 0.8] # lattice → small-world → random
-    # Development effect
-    weight_mode: [0, 1, 2, 3] # all four modes
-    alpha: [0.5, 1.5, 3.0] # weak / medium / strong
-    # Dissatisfaction threshold
-    dis_threshold: [0.25, 0.4, 0.6, 0.75] # tight → loose rewiring trigger
-    # Inequality structure
-    dev_mode: [0, 2] # uniform vs pareto (most contrast)
-    dev_param: [0.15] # single shape param, expand in v3
+    p: [0.05, 0.1, 0.2, 0.4, 0.8] # full topology range
+    weight_mode: [0, 1, 2, 3] # all modes
+    alpha: [0.25, 0.75, 1.5, 3.0] # finer resolution, especially low end
+    dis_threshold: [0.2, 0.35, 0.5, 0.65, 0.8] # finer — phase transition likely here
+    dev_mode: [0, 2] # uniform vs pareto
+    dev_param: [0.15]
 
 fixed:
-  N: 150
+  N: 800 # large enough that cultural drift is slow and development matters
   k: 4
   F: 5
   q: 10
   seed: 42
-  max_steps: 20000000
+  max_steps: 200000000

@@ -125,7 +125,7 @@ class AxelrodDevSmallWorld:
             return False, self.total_steps, -1.0
 
         if transient_steps is None:
-            transient_steps = self.N * 50  # 500 sweeps burn-in
+            transient_steps = self.N * 200  # 500 sweeps burn-in
 
         threshold = self.N * 100_000
         steps_left = additional_steps
