@@ -1,0 +1,5 @@
+,s_max_mean,s_max_std,num_clusters_mean,convergence_rate,mean_dis_mean,deg_var_mean
+Linear,0.4614,0.4009,251.2217,0.3976,0.2075,9.6944
+Quadratic,0.4412,0.4336,278.375,0.4408,0.2108,7.6253
+Biphasic,0.7353,0.371,116.462,0.7046,0.0434,7.3117
+Attraction,0.8393,0.2629,77.5197,0.7726,0.0078,7.5666

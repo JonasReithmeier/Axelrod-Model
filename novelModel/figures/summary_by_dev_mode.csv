@@ -1,0 +1,4 @@
+,s_max_mean,convergence_rate,mean_dis_mean
+Uniform,0.662,0.6094,0.1115
+Pareto,0.5295,0.5696,0.1429
+Bimodal,0.856,0.0,0.0581
