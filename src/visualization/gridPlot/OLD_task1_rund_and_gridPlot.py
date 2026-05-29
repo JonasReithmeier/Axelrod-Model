@@ -5,7 +5,7 @@ import yaml
 project_root = Path(__file__).parent.parent.parent.parent
 sys.path.append(str(project_root))
 
-from src.model import FastAxelrodModel_regularLattice
+from src.model import AxelrodModel
 from src.visualization.gridPlot.engine import AxelrodPlotter
 
 
@@ -13,7 +13,7 @@ def run():
     with open("config.yaml", "r") as f:
         config = yaml.safe_load(f)
 
-    model = FastAxelrodModel_regularLattice(config=config['test_simulation_defaults'])
+    model = AxelrodModel(config=config['test_simulation_defaults'])
     model.initialize_new_simulation()
     plotter = AxelrodPlotter(config)
 
