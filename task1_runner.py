@@ -82,6 +82,9 @@ def run_single_realization(params):
 
     # Fast metrics 
     s_max, s_mean = model.get_metrics()
+    iteration_Number =  params['iterationNumber']
+    to_print = f"Finished iteration {iteration_Number}"
+    print(to_print)
 
     result = {
         'width': params['width'], 'N': model.N, 'q': params['q'], 'F': params['F'],'iterationNumber': params['iterationNumber'],
