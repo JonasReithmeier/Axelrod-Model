@@ -100,71 +100,76 @@ def calculate_mobility_as(grid, N_cells, F, T, num_empty, edge_ptrs, edges):
     return movers / active_agents
 
 @njit
-def perform_agent_step(grid, F, empty_locs, num_empty, T, node, updates, rng, diff_indices, valid_neighbors_coords, edge_ptrs, edges):
+def perform_agent_step(grid, F, empty_locs, num_empty, T, node, updates,
+                       rng, diff_indices, valid_neighbors_coords,
+                       edge_ptrs, edges):
     if grid[node, 0] == -1:
         return updates + 1
-        
-    valid_n_count = 0
-    diff_sum_F = 0
-    
+
     start = edge_ptrs[node]
-    end = edge_ptrs[node+1]
-    
+    end   = edge_ptrs[node + 1]
+
+    # Collect occupied neighbours
+    valid_n_count = 0
     for e in range(start, end):
         n_node = edges[e]
         if grid[n_node, 0] != -1:
             valid_neighbors_coords[valid_n_count] = n_node
             valid_n_count += 1
-            
-            shared = 0
-            for f in range(F):
-                if grid[node, f] == grid[n_node, f]:
-                    shared += 1
-            diff_sum_F += (F - shared)
-            
-    is_unhappy = False
-    if valid_n_count > 0:
-        if diff_sum_F > T * F * valid_n_count:  # Removed fractional representation completely
-            is_unhappy = True
-    else:
-        is_unhappy = True
 
-    if is_unhappy and num_empty > 0:
-        e_idx = rng.integers(0, num_empty)
-        empty_node = empty_locs[e_idx]
-        
-        for f in range(F):
-            grid[empty_node, f] = grid[node, f]
-            grid[node, f] = -1
-            
-        empty_locs[e_idx] = node
+    # Isolated agent → moves with certainty 
+    if valid_n_count == 0:
+        if num_empty > 0:
+            e_idx      = rng.integers(0, num_empty)
+            empty_node = empty_locs[e_idx]
+            for f in range(F):
+                grid[empty_node, f] = grid[node, f]
+                grid[node, f]       = -1
+            empty_locs[e_idx] = node
         return updates + 1
-        
-    else:
-        if valid_n_count > 0:
-            n_choice = rng.integers(0, valid_n_count)
-            n_node = valid_neighbors_coords[n_choice]
-            
-            shared = 0
-            diff_count = 0
-            for f in range(F):
-                if grid[node, f] == grid[n_node, f]:
-                    shared += 1
-                else:
-                    diff_indices[diff_count] = f
-                    diff_count += 1
-                    
-            if 0 < shared < F:
-                if (rng.random() * F) < shared:
-                    target_trait = diff_indices[rng.integers(0, diff_count)]
-                    grid[node, target_trait] = grid[n_node, target_trait]
-                return 0 
-            
-            else:
-                return updates + 1
-        else:
-            return updates + 1
 
+    # Step 1: Axelrod interaction with one random neighbour
+    n_choice = rng.integers(0, valid_n_count)
+    n_node   = valid_neighbors_coords[n_choice]
+
+    shared     = 0
+    diff_count = 0
+    for f in range(F):
+        if grid[node, f] == grid[n_node, f]:
+            shared += 1
+        else:
+            diff_indices[diff_count] = f
+            diff_count += 1
+
+    interacted = False
+    if 0 < shared < F:
+        if (rng.random() * F) < shared:
+            target_trait = diff_indices[rng.integers(0, diff_count)]
+            grid[node, target_trait] = grid[n_node, target_trait]
+            interacted = True
+            return 0   
+
+    # Step 2: Schelling mobility — only if no imitation AND chosen
+    if not interacted and shared != F:
+        # Compute mean overlap over ALL occupied neighbours
+        diff_sum_F = 0
+        for i in range(valid_n_count):
+            nb = valid_neighbors_coords[i]
+            sh = 0
+            for f in range(F):
+                if grid[node, f] == grid[nb, f]:
+                    sh += 1
+            diff_sum_F += (F - sh)
+
+        if diff_sum_F > T * F * valid_n_count and num_empty > 0:
+            e_idx      = rng.integers(0, num_empty)
+            empty_node = empty_locs[e_idx]
+            for f in range(F):
+                grid[empty_node, f] = grid[node, f]
+                grid[node, f]       = -1
+            empty_locs[e_idx] = node
+
+    return updates + 1
 @njit
 def run_mcs_chunk(grid, N_cells, F, empty_locs, num_empty, T, max_mcs, updates, threshold, rng, edge_ptrs, edges, max_degree):
     diff_indices = np.empty(F, dtype=np.int32)
