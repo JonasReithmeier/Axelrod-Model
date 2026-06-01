@@ -102,7 +102,7 @@ def main():
     # =========================================================
     print("Generating Plot 2 (Lattice Size Scaling)...")
     h2 = 0.5
-    T2 = 0.2
+    T2 = 0.8
     
     mask_p2 = np.isclose(df_f['h'], h2) & np.isclose(df_f['T'], T2)
     df_p2 = df_f[mask_p2]

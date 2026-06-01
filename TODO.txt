@@ -26,3 +26,6 @@ mobility from schelling model but with connectivity logic from small-worlds mode
 
 
 (create and pre calculate lookup tables for the neighbours of the agents to avoid modulo computations for each Monte Carlo Step)
+
+
+
