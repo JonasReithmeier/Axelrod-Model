@@ -12,14 +12,14 @@ from datetime import timedelta
 from pathlib import Path
 from itertools import product
 from concurrent.futures import ProcessPoolExecutor
-from src.model import FastAxelrodModel_regularLattice
+from src.model import AxelrodModel
 
 # --- 1. The Result Listener (Background Process) ---
 def result_listener(queue, journal_path):
     """
     Background process that writes results to a CSV journal in real-time.
     """
-    fieldnames = ['width', 'N', 'q', 'F', 'seed', 's_max', 's_mean', 'steps_to_freeze', 'is_frozen']
+    fieldnames = ['width', 'N', 'q', 'F', 'iterationNumber', 'seed', 's_max', 's_mean', 'steps_to_freeze', 'is_frozen']
     
     # Open in append mode
     with open(journal_path, mode='a', newline='', encoding='utf-8') as f:
@@ -52,12 +52,12 @@ def run_single_realization(params):
     queue = WORKER_QUEUE  # Use the globally initialized queue
     cp_dir = Path("data/task1/checkpoints")
     cp_dir.mkdir(parents=True, exist_ok=True)
-    cp_file = cp_dir / f"cp_w{params['width']}_q{params['q']}_F{params['F']}_s{params['seed']}.pkl"
+    cp_file = cp_dir / f"cp_w{params['width']}_q{params['q']}_F{params['F']}_iterationNumber{params['iterationNumber']}_s{params['seed']}.pkl"
 
     # Initialize Fast Model
-    model = FastAxelrodModel_regularLattice(
+    model = AxelrodModel(
         width=params['width'], height=params['width'], 
-        F=params['F'], q=params['q'], seed=params['seed']
+        F=params['F'], q=params['q'], iterationNumber=params['iterationNumber'], seed=params['seed']
     )
 
     steps_already_done = 0
@@ -84,7 +84,7 @@ def run_single_realization(params):
     s_max, s_mean = model.get_metrics()
 
     result = {
-        'width': params['width'], 'N': model.N, 'q': params['q'], 'F': params['F'],
+        'width': params['width'], 'N': model.N, 'q': params['q'], 'F': params['F'],'iterationNumber': params['iterationNumber'],
         'seed': params['seed'], 's_max': s_max, 's_mean': s_mean,
         'steps_to_freeze': total_steps,
         'is_frozen': is_frozen
@@ -121,7 +121,7 @@ def ingest_journal_to_master(master_file, journal_file):
             # or filter out empty DFs
             final_df = pd.concat([old_df, journal_df], ignore_index=True).reset_index(drop=True)
             # Keep the latest run (highest max_steps) for each combination
-            final_df = final_df.drop_duplicates(subset=['width', 'q', 'F', 'seed'], keep='last')
+            final_df = final_df.drop_duplicates(subset=['width', 'q', 'F', 'iterationNumber'], keep='last')
         else:
             final_df = journal_df
         
@@ -146,7 +146,7 @@ def main():
     
     data_path = Path("data/task1")
     data_path.mkdir(parents=True, exist_ok=True)
-    master_file = data_path / "axelrod_master_results.parquet"
+    master_file = data_path / (config['grid_visualization']['database_name'] + '.parquet')
     journal_file = data_path / "journal_temp.csv"
     # Ensure journal exists for the listener
     if not journal_file.exists():
@@ -160,7 +160,7 @@ def main():
     if master_file.exists():
         old_df = pd.read_parquet(master_file)
         existing_data_map = {
-            (row.width, row.q, row.F, row.seed): (row.is_frozen, row.steps_to_freeze) 
+            (row.width, row.q, row.F, row.iterationNumber): (row.is_frozen, row.steps_to_freeze) 
             for row in old_df.itertuples(index=False)
         }
         print(f"Database loaded: {len(existing_data_map)} realizations existing.")
@@ -174,12 +174,13 @@ def main():
             seed_context = f"{exp_cfg['master_seed']}_{f_val}_{q_val}_{w_val}_{m}"
             seed = zlib.adler32(seed_context.encode())
             
-            is_frozen, prev_steps = existing_data_map.get((w_val, q_val, f_val, seed), (None, 0))
+            is_frozen, prev_steps = existing_data_map.get((w_val, q_val, f_val, m), (None, 0))
             
             if is_frozen is None or (is_frozen == False and exp_cfg['max_steps'] > prev_steps):
                 tasks.append({
                     'q': q_val, 'width': w_val, 'F': f_val, 
                     'max_steps': exp_cfg['max_steps'], 
+                    'iterationNumber': m,
                     #'prev_steps': prev_steps,    prev steps are now included in the checkpoint file for more safety: in case the db is behind, more calculations may be done, but seed and steps are guaranteed in sync
                     'seed': seed
                 })

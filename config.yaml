@@ -5,6 +5,7 @@ grid_visualization:
   theme: "light"
   base_node_setting: 40000 # Increase to make all nodes bigger
   base_line_setting: 50 # Increase to make all lines thicker
+  database_name: reportDatabase_task1
 
 # Settings for standard single runs (main.py)
 test_simulation_defaults:
@@ -25,9 +26,13 @@ experiment:
 
   # Every combination of these will be tested (Cartesian Product)
   sweep:
-    F: [3, 5, 8] #
-    q: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 18, 20, 25, 30] #
-    width: [5, 10, 15, 20, 30, 40, 50] #
+    F: [3] #
+    #q: [2]
+    #q: [2,3]
+    q: [2,3,4,5,6,7,8,9,10,11,12,13,14,15] #,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30]
+    #q: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 18, 20, 25, 30] #
+    # width: [5, 10, 15, 20, 30, 40, 50] #
+    width: [50]
 
   # task22: small worlds network
 ##################################################################################################

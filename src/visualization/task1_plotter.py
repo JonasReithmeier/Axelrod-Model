@@ -3,10 +3,14 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
 import math
+import yaml
 
 def plot_axelrod_data():
     # --- 1. Load Data ---
-    data_path = Path("data/task1/axelrod_master_results.parquet")
+    with open("config.yaml", "r") as f:
+        config = yaml.safe_load(f)
+    data_path = Path("data/task1/" + config['grid_visualization']['database_name'] + ".parquet")
+
     if not data_path.exists():
         print(f"Error: Database not found at {data_path}")
         return
@@ -22,7 +26,7 @@ def plot_axelrod_data():
         return
 
     # --- 2. Setup Output Folder ---
-    plot_dir = Path("plots/task1")
+    plot_dir = Path("reportPlots/task1")
     plot_dir.mkdir(parents=True, exist_ok=True)
 
     # --- 3. Scientific Styling ---
@@ -36,6 +40,8 @@ def plot_axelrod_data():
 
     M_min = -1 # realizations (smallest group)
 
+    ploted_widths = [20,30,40,50]
+
     #for F in unique_Fs:
     for F in [3]:
         df_f = df[df['F'] == F]
@@ -48,7 +54,7 @@ def plot_axelrod_data():
             widths = sorted(df_f['width'].unique())
             
             #for width in widths:
-            for width in [20,40,50]:
+            for width in ploted_widths:
             #to recreate graph from paper on these widths
                 df_w = df_f[df_f['width'] == width]
 
@@ -97,7 +103,7 @@ def plot_axelrod_data():
             widths = sorted(df_f['width'].unique())
             
             #for width in widths:
-            for width in [20,40,50]:
+            for width in ploted_widths:
             #to recreate graph from paper on these widths
                 df_w = df_f[df_f['width'] == width]
 

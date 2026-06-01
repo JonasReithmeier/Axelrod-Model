@@ -1,14 +1,15 @@
 import numpy as np
 from .core import run_steps, get_cluster_metrics
 
-class FastAxelrodModel_regularLattice:
-    def __init__(self, width=None, height=None, F=None, q=None, seed=None, config=None):
-        cfg = config if config is not None else {}
-        self.width = width if width is not None else cfg.get('width', 10)
-        self.height = height if height is not None else cfg.get('height', 10)
-        self.F = F if F is not None else cfg.get('features', 5)
-        self.q = q if q is not None else cfg.get('traits', 10)
-        self.seed = seed if seed is not None else cfg.get('seed')
+class AxelrodModel:
+    def __init__(self, width=None, height=None, F=None, q=None, iterationNumber = None, seed=None, config=None):
+        cfg = config 
+        self.width = width 
+        self.height = height 
+        self.F = F 
+        self.q = q 
+        self.iterationNumer = iterationNumber
+        self.seed = seed
 
         self.N = self.width * self.height
         
@@ -44,6 +45,7 @@ class FastAxelrodModel_regularLattice:
             "grid": self.grid,
             "updates": self.updates_since_last_change,
             "rng_state": self.rng.bit_generator.state,  # Exact RNG state!
+            "iterationNumber": self.iterationNumer,
             "prev_steps": self.total_steps_done
         }
 
@@ -51,6 +53,7 @@ class FastAxelrodModel_regularLattice:
         self.grid = cp["grid"]
         self.updates_since_last_change = cp["updates"]
         self.rng.bit_generator.state = cp["rng_state"] # Restore Exact RNG State!
+        self.iterationNumber = cp["iterationNumber"]
         self.total_steps_done = cp['prev_steps']
 
 
