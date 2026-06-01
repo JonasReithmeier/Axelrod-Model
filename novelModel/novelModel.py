@@ -40,7 +40,7 @@ class AxelrodDevSmallWorld:
         F             : Number of cultural features
         q             : Number of cultural traits per feature
         weight_mode   : 0=linear, 1=quadratic, 2=biphasic, 3=attraction
-        alpha         : Strength of development weight function
+        alpha         : Strength of development weight function (const multiplied to weight function)
         dis_threshold : Average dissatisfaction above which agent rewires
         dev_mode      : 0=uniform, 1=normal, 2=pareto, 3=bimodal
         dev_param     : Shape/sigma parameter for dev distribution
@@ -68,7 +68,7 @@ class AxelrodDevSmallWorld:
         self.rng = np.random.default_rng(derived_seed)
 
         # Generous max-degree ceiling: 8x initial k (handles topology drift)
-        self.max_degree = min(k * 8, N - 1)
+        self.max_degree = N - 1 #TODO  is that really safe. Maybe just replace with (N-1)
 
         # State
         self.grid = None          # (N, F) int16

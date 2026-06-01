@@ -3,7 +3,7 @@ Weight function reference for the Development Small World model.
 These are NOT compiled with Numba — they serve as documentation and
 Python-level validation/plotting helpers.
 
-The actual dispatch lives in core_dev_sw.py::weight() as an @njit if/elif chain.
+The actual dispatch lives in core_novelModel.py::weight() as an @njit if/elif chain.
 
 d = dev_i - dev_j  (i's perspective; positive = i richer than j)
 alpha controls the strength of the development effect.
