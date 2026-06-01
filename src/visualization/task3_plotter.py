@@ -92,7 +92,7 @@ def main():
         plt.legend(loc='upper right', framealpha=1.0, edgecolor='black')
         
     plt.tight_layout()
-    plt.savefig(out_dir / "fig1_low_density_h0.05.png", dpi=300, bbox_inches='tight')
+    plt.savefig(f"{out_dir}/fig1_low_density_h{h1}_F{target_F}.png", dpi=300, bbox_inches='tight')
     plt.close()
 
 
@@ -137,7 +137,7 @@ def main():
         plt.legend(loc='upper right', framealpha=1.0, edgecolor='black')
         
     plt.tight_layout()
-    plt.savefig(out_dir / "fig2a_lattice_scaling_h0.5.png", dpi=300, bbox_inches='tight')
+    plt.savefig(f"{out_dir}/fig2a_lattice_scaling_h{h2}_F{target_F}_T{T2}.png", dpi=300, bbox_inches='tight')
     plt.close()
 
 
@@ -180,7 +180,7 @@ def main():
         plt.legend(loc='upper right', framealpha=1.0, edgecolor='black')
         
     plt.tight_layout()
-    plt.savefig(out_dir / "fig2b_tolerance_scaling_h0.5.png", dpi=300, bbox_inches='tight')
+    plt.savefig(f"{out_dir}/fig2b_tolerance_scaling_h{h2}.png", dpi=300, bbox_inches='tight')
     plt.close()
 
     print(f"\nDone! Plots saved to {out_dir}/")
