@@ -66,7 +66,7 @@ def calculate_mobility_as(grid, N_cells, F, T, num_empty, edge_ptrs, edges):
     if num_empty == 0:
         return 0.0
         
-    movers = 0
+    movers = 0.0  
     active_agents = 0
     
     for node in range(N_cells):
@@ -91,12 +91,15 @@ def calculate_mobility_as(grid, N_cells, F, T, num_empty, edge_ptrs, edges):
                 diff_sum_F += (F - shared)
         
         if valid_neighbors == 0:
-            movers += 1
+            movers += 1.0
         else:
+            # Check threshold against (1 - T) and scale by (1 - mean_overlap)
             if diff_sum_F > T * F * valid_neighbors:
-                movers += 1
+                mean_overlap = 1.0 - (diff_sum_F / (F * valid_neighbors))
+                movers += (1.0 - mean_overlap)
                 
-    if active_agents == 0: return 0.0
+    if active_agents == 0: 
+        return 0.0
     return movers / active_agents
 
 @njit
