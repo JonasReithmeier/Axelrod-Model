@@ -79,6 +79,11 @@ def grid_params(sweep_cfg, fixed_cfg):
 # ---------------------------------------------------------------------------
 
 def append_result(result, output_path):
+    # Ensure the containing directory (e.g., 'novelModel/') exists
+    out_dir = os.path.dirname(output_path)
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
+
     file_exists = os.path.exists(output_path)
     with open(output_path, "a", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=sorted(result.keys()))
@@ -218,7 +223,7 @@ def main():
     )
     parser = argparse.ArgumentParser(description="Dev-SW parameter sweep")
     parser.add_argument("--config", default="novelModel/config_novelModel.yaml", help="Path to config.yaml")
-    parser.add_argument("--output", default="data/novelModel/results.csv", help="Output CSV path")
+    parser.add_argument("--output", default="novelModel/data/results.csv", help="Output CSV path")
     parser.add_argument("--n-trials", type=int, default=100,
                         help="Number of trials (random/tpe/cmaes modes)")
     args = parser.parse_args()

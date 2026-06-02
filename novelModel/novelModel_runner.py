@@ -51,37 +51,46 @@ def save_checkpoint(model, trial_id, checkpoint_dir, params):
     logger.debug(f"Checkpoint saved: {path}")
 
 
+# Updated load_checkpoint in novelModel_runner.py
+
 def load_checkpoint(model, trial_id, checkpoint_dir):
     path = _checkpoint_path(checkpoint_dir, trial_id)
     if not os.path.exists(path):
         return False
     
-    # Load with allow_pickle=True to support serialized dicts
-    data = np.load(path, allow_pickle=True)
+    try:
+        # Load the file safely
+        data = np.load(path, allow_pickle=True)
 
-    grid_data = data["grid"]
-    padded_edges_data = data["padded_edges"]
-    dev_data = data["dev"]
-    adj_matrix_data = data["adj_matrix"]
+        grid_data = data["grid"]
+        padded_edges_data = data["padded_edges"]
+        dev_data = data["dev"]
+        adj_matrix_data = data["adj_matrix"]
 
-    # 1. Validate shapes to prevent out-of-bounds crashes in Numba
-    if grid_data.shape[0] != model.N or grid_data.shape[1] != model.F:
+        # Validate shapes
+        if grid_data.shape[0] != model.N or grid_data.shape[1] != model.F:
+            logger.warning(f"Shape mismatch 'grid' in checkpoint {path}. Starting fresh.")
+            return False
+
+        expected_edges_size = model.N * model.max_degree
+        if padded_edges_data.shape[0] != expected_edges_size:
+            logger.warning(f"Shape mismatch 'padded_edges' in checkpoint {path}. Starting fresh.")
+            return False
+
+    except Exception as e:
+        # Handle BadZipFile, OSError, KeyErrors, or other loading corruptions gracefully
         logger.warning(
-            f"Shape mismatch for 'grid' in checkpoint {path}. "
-            f"Expected ({model.N}, {model.F}), got {grid_data.shape}. "
-            f"Starting fresh."
+            f"[{trial_id}] Checkpoint {path} is corrupted or incomplete ({type(e).__name__}: {e}). "
+            f"Starting this trial fresh."
         )
+        # Attempt to delete the corrupted file so it does not cause future issues
+        try:
+            os.remove(path)
+        except OSError:
+            pass
         return False
 
-    expected_edges_size = model.N * model.max_degree
-    if padded_edges_data.shape[0] != expected_edges_size:
-        logger.warning(
-            f"Shape mismatch for 'padded_edges' in checkpoint {path}. "
-            f"Expected size {expected_edges_size}, got {padded_edges_data.shape[0]}. "
-            f"Starting fresh."
-        )
-        return False
-
+    # Reconstruct state if loading succeeded
     rng_state = {
         "bit_generator": "PCG64",
         "state": {
@@ -92,12 +101,11 @@ def load_checkpoint(model, trial_id, checkpoint_dir):
         "uinteger": 0,
     }
 
-    # 2. Force copies to ensure arrays are fully writeable in memory
     cp = {
         "grid": grid_data.copy(),
         "dev": dev_data.copy(),
         "padded_edges": padded_edges_data.copy(),
-        "adj_matrix": adj_matrix_data.astype(np.bool_),  # .astype() creates a copy automatically
+        "adj_matrix": adj_matrix_data.astype(np.bool_),
         "updates": int(data["updates"][0]),
         "total_steps": int(data["total_steps"][0]),
         "capacity_exceeded": int(data["capacity_exceeded"][0]) if "capacity_exceeded" in data else 0,
@@ -107,7 +115,6 @@ def load_checkpoint(model, trial_id, checkpoint_dir):
     model.load_checkpoint_data(cp)
     logger.debug(f"Checkpoint loaded: {path}")
     return True
-
 
 # ---------------------------------------------------------------------------
 # Single trial
