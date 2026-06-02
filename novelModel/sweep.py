@@ -30,7 +30,7 @@ import ray
 import optuna
 
 
-from .novelModel_runner import run_trial
+#from .novelModel_runner import run_trial
 
 logger = logging.getLogger(__name__)
 optuna.logging.set_verbosity(optuna.logging.WARNING)
@@ -99,7 +99,7 @@ def append_result(result, output_path):
 def run_grid_sweep(config, output_path, checkpoint_dir, steps_per_chunk):
     fixed = config.get("fixed", {})
     sweep_cfg = config["sweep"]
-    n_realizations = sweep_cfg.get("n_realizations", 1)  # Get realization count
+    n_realizations = sweep_cfg.get("n_realizations", 1)
 
     all_params = list(grid_params(sweep_cfg, fixed))
     logger.info(
@@ -111,16 +111,28 @@ def run_grid_sweep(config, output_path, checkpoint_dir, steps_per_chunk):
     for p in all_params:
         for m in range(n_realizations):
             p_real = p.copy()
-            p_real["m"] = m  # Inject realization index
-            # make_trial_id hashes 'm' automatically, giving each realization its own unique filename
+            p_real["m"] = m
             p_real["trial_id"] = make_trial_id(p_real)
             futures.append(ray_run_trial.remote(p_real, checkpoint_dir, steps_per_chunk))
 
-    for future in futures:
-        result = ray.get(future)
-        append_result(result, output_path)
-        logger.info(f"Completed: {result['trial_id']} (m={result.get('m', 0)})")
+    # --- Out-of-Order Recovery Loop ---
+    unresolved = futures.copy()
+    completed_count = 0
+    total_count = len(futures)
 
+    while unresolved:
+        # Get whichever task finishes first
+        resolved, unresolved = ray.wait(unresolved, num_returns=1)
+        
+        # This is guaranteed to be finished, so ray.get() is instantaneous
+        result = ray.get(resolved[0])
+        append_result(result, output_path)
+        
+        completed_count += 1
+        logger.info(
+            f"[{completed_count}/{total_count}] Saved: {result['trial_id']} "
+            f"(m={result.get('m', 0)})"
+        )
 
 def run_optuna_sweep(config, output_path, checkpoint_dir, steps_per_chunk, n_trials, mode):
     fixed = config.get("fixed", {})
@@ -223,17 +235,27 @@ def run_random_sweep(config, output_path, checkpoint_dir, steps_per_chunk, n_tri
                 p_base[k] = v
         p_base.update(fixed)
 
-        # Generate realizations for this setting
         for m in range(n_realizations):
             p_real = p_base.copy()
             p_real["m"] = m
             p_real["trial_id"] = make_trial_id(p_real)
             futures.append(ray_run_trial.remote(p_real, checkpoint_dir, steps_per_chunk))
 
-    for i, future in enumerate(futures):
-        result = ray.get(future)
+    # --- Out-of-Order Recovery Loop ---
+    unresolved = futures.copy()
+    completed_count = 0
+    total_count = len(futures)
+
+    while unresolved:
+        resolved, unresolved = ray.wait(unresolved, num_returns=1)
+        result = ray.get(resolved[0])
         append_result(result, output_path)
-        logger.info(f"Random trial realization {i + 1}/{n_trials * n_realizations} done.")
+        
+        completed_count += 1
+        logger.info(
+            f"[{completed_count}/{total_count}] Saved Random Trial: {result['trial_id']} "
+            f"(m={result.get('m', 0)})"
+        )
 
 
 # ---------------------------------------------------------------------------

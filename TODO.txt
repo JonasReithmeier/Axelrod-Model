@@ -1,3 +1,4 @@
+
 novel model: focus on one weight function and one distribution for the development-constant
 
 remove all default values and replace with ValueError
