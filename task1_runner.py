@@ -8,11 +8,13 @@ import pickle
 import csv
 import random
 import multiprocessing as mp
+import threading
 from datetime import timedelta
 from pathlib import Path
 from itertools import product
 from concurrent.futures import ProcessPoolExecutor
 from src.model import AxelrodModel
+from multiprocessing import Value
 
 # --- 1. The Result Listener (Background Process) ---
 def result_listener(queue, journal_path):
@@ -38,7 +40,7 @@ def result_listener(queue, journal_path):
 # --- Global Worker Variable ---
 WORKER_QUEUE = None
 
-def init_worker(q):
+def init_worker(q, c):
     """
     Initializes the queue connection ONCE per CPU core when it boots up.
     Prevents Socket/File Descriptor exhaustion.
@@ -46,10 +48,15 @@ def init_worker(q):
     global WORKER_QUEUE
     WORKER_QUEUE = q
 
+    global WORKER_counter
+    WORKER_counter = c
+
 # --- 2. The Worker Function ---
 def run_single_realization(params):
     global WORKER_QUEUE
     queue = WORKER_QUEUE  # Use the globally initialized queue
+    global WORKER_counter
+    counter = WORKER_counter
     cp_dir = Path("data/task1/checkpoints")
     cp_dir.mkdir(parents=True, exist_ok=True)
     cp_file = cp_dir / f"cp_w{params['width']}_q{params['q']}_F{params['F']}_iterationNumber{params['iterationNumber']}_s{params['seed']}.pkl"
@@ -82,9 +89,6 @@ def run_single_realization(params):
 
     # Fast metrics 
     s_max, s_mean = model.get_metrics()
-    iteration_Number =  params['iterationNumber']
-    to_print = f"Finished iteration {iteration_Number}"
-    print(to_print)
 
     result = {
         'width': params['width'], 'N': model.N, 'q': params['q'], 'F': params['F'],'iterationNumber': params['iterationNumber'],
@@ -100,6 +104,12 @@ def run_single_realization(params):
     else:
         with open(cp_file, 'wb') as f:
             pickle.dump(model.get_checkpoint_data(), f)
+
+    with counter.get_lock():
+        counter.value += 1
+        localCounter = counter.value
+    to_print = f"Number of finished iteration: {localCounter}"
+    print(to_print)
 
     return True
 
@@ -204,10 +214,12 @@ def main():
     print(f"Starting {len(tasks)} tasks. Journaling active...")
     print(f"Graceful Stop: Create a file named 'STOP' to exit early.")
 
+    counter = Value('i',0)
+
     # --- Parallel Execution ---
     stop_file = Path("STOP")
     try:
-        with ProcessPoolExecutor(max_workers=os.cpu_count(), initializer=init_worker, initargs=(queue,)) as executor:
+        with ProcessPoolExecutor(max_workers=os.cpu_count(), initializer=init_worker, initargs=(queue,counter)) as executor:
             
             # Use submit for better control if we want to stop early
             futures = []
@@ -217,7 +229,7 @@ def main():
                     stop_file.unlink()
                     break
                 futures.append(executor.submit(run_single_realization, t))
-            
+
             # Wait for submitted tasks to complete
             for future in futures:
                 future.result()
