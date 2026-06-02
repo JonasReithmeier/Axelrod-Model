@@ -97,35 +97,38 @@ def append_result(result, output_path):
 # ---------------------------------------------------------------------------
 
 def run_grid_sweep(config, output_path, checkpoint_dir, steps_per_chunk):
-    """Exhaustive grid sweep with Ray parallelism."""
     fixed = config.get("fixed", {})
     sweep_cfg = config["sweep"]
+    n_realizations = sweep_cfg.get("n_realizations", 1)  # Get realization count
 
     all_params = list(grid_params(sweep_cfg, fixed))
-    logger.info(f"Grid sweep: {len(all_params)} trials")
+    logger.info(
+        f"Grid sweep: {len(all_params)} settings, {n_realizations} realizations each "
+        f"({len(all_params) * n_realizations} total trials)"
+    )
 
     futures = []
     for p in all_params:
-        p["trial_id"] = make_trial_id(p)
-        futures.append(ray_run_trial.remote(p, checkpoint_dir, steps_per_chunk))
+        for m in range(n_realizations):
+            p_real = p.copy()
+            p_real["m"] = m  # Inject realization index
+            # make_trial_id hashes 'm' automatically, giving each realization its own unique filename
+            p_real["trial_id"] = make_trial_id(p_real)
+            futures.append(ray_run_trial.remote(p_real, checkpoint_dir, steps_per_chunk))
 
     for future in futures:
         result = ray.get(future)
         append_result(result, output_path)
-        logger.info(f"Completed: {result['trial_id']}")
+        logger.info(f"Completed: {result['trial_id']} (m={result.get('m', 0)})")
 
 
 def run_optuna_sweep(config, output_path, checkpoint_dir, steps_per_chunk, n_trials, mode):
-    """
-    Optuna-driven sweep (TPE or CMA-ES).
-    Optimises the target metric defined in config.sweep.target_metric.
-    Direction: config.sweep.target_direction ('minimize' or 'maximize').
-    """
     fixed = config.get("fixed", {})
     sweep_cfg = config["sweep"]
     param_ranges = sweep_cfg["params"]
     target_metric = sweep_cfg.get("target_metric", "s_max")
     direction = sweep_cfg.get("target_direction", "maximize")
+    n_realizations = sweep_cfg.get("n_realizations", 1)
 
     db_path = output_path.replace(".csv", ".db")
     storage = f"sqlite:///{db_path}"
@@ -144,39 +147,55 @@ def run_optuna_sweep(config, output_path, checkpoint_dir, steps_per_chunk, n_tri
         sampler=sampler,
     )
 
-    # We use Ray to run batches of trials in parallel
     n_parallel = config.get("n_parallel", max(1, os.cpu_count() - 1))
 
     completed = 0
     while completed < n_trials:
-        batch_size = min(n_parallel, n_trials - completed)
+        # Determine the number of unique settings we can evaluate in parallel based on CPU limits
+        batch_size = max(1, n_parallel // n_realizations)
+        batch_size = min(batch_size, n_trials - completed)
+        
         trials = [study.ask() for _ in range(batch_size)]
 
-        futures = []
+        futures_map = {}  # Map each trial to its list of parallel realizations
         for trial in trials:
-            p = {}
+            p_base = {}
             for k, v in param_ranges.items():
                 if isinstance(v, list) and len(v) == 2 and isinstance(v[0], float):
-                    p[k] = trial.suggest_float(k, v[0], v[1])
+                    p_base[k] = trial.suggest_float(k, v[0], v[1])
                 elif isinstance(v, list) and len(v) == 2 and isinstance(v[0], int):
-                    p[k] = trial.suggest_int(k, v[0], v[1])
+                    p_base[k] = trial.suggest_int(k, v[0], v[1])
                 elif isinstance(v, list):
-                    p[k] = trial.suggest_categorical(k, v)
+                    p_base[k] = trial.suggest_categorical(k, v)
                 else:
-                    p[k] = v
-            p.update(fixed)
-            p["trial_id"] = make_trial_id(p)
-            futures.append((trial, ray_run_trial.remote(p, checkpoint_dir, steps_per_chunk)))
+                    p_base[k] = v
+            p_base.update(fixed)
 
-        for trial, future in futures:
-            result = ray.get(future)
-            value = result.get(target_metric, float("nan"))
-            study.tell(trial, value)
-            append_result(result, output_path)
+            futures_map[trial] = []
+            for m in range(n_realizations):
+                p_real = p_base.copy()
+                p_real["m"] = m
+                p_real["trial_id"] = make_trial_id(p_real)
+                future = ray_run_trial.remote(p_real, checkpoint_dir, steps_per_chunk)
+                futures_map[trial].append(future)
+
+        # Retrieve results and report averages to Optuna
+        for trial in trials:
+            realization_results = ray.get(futures_map[trial])
+            
+            # Write all individual realizations to the CSV for analysis
+            for res in realization_results:
+                append_result(res, output_path)
+
+            # Average the target metric across all realizations for Optuna
+            values = [res.get(target_metric, float("nan")) for res in realization_results]
+            avg_value = float(np.nanmean(values))
+            
+            study.tell(trial, avg_value)
             completed += 1
             logger.info(
-                f"Trial {completed}/{n_trials}: {target_metric}={value:.4f} "
-                f"params={trial.params}"
+                f"Trial {completed}/{n_trials}: avg_{target_metric}={avg_value:.4f} "
+                f"across {n_realizations} realizations. params={trial.params}"
             )
 
     logger.info(f"Best trial: {study.best_trial.params}")
@@ -184,32 +203,37 @@ def run_optuna_sweep(config, output_path, checkpoint_dir, steps_per_chunk, n_tri
 
 
 def run_random_sweep(config, output_path, checkpoint_dir, steps_per_chunk, n_trials):
-    """Pure random sampling, Ray parallel, no Optuna overhead."""
     fixed = config.get("fixed", {})
     sweep_cfg = config["sweep"]
     param_ranges = sweep_cfg["params"]
+    n_realizations = sweep_cfg.get("n_realizations", 1)
     rng = np.random.default_rng(config.get("sweep_seed", 0))
 
     futures = []
     for _ in range(n_trials):
-        p = {}
+        p_base = {}
         for k, v in param_ranges.items():
             if isinstance(v, list) and len(v) == 2 and isinstance(v[0], float):
-                p[k] = float(rng.uniform(v[0], v[1]))
+                p_base[k] = float(rng.uniform(v[0], v[1]))
             elif isinstance(v, list) and len(v) == 2 and isinstance(v[0], int):
-                p[k] = int(rng.integers(v[0], v[1] + 1))
+                p_base[k] = int(rng.integers(v[0], v[1] + 1))
             elif isinstance(v, list):
-                p[k] = v[int(rng.integers(0, len(v)))]
+                p_base[k] = v[int(rng.integers(0, len(v)))]
             else:
-                p[k] = v
-        p.update(fixed)
-        p["trial_id"] = make_trial_id(p)
-        futures.append(ray_run_trial.remote(p, checkpoint_dir, steps_per_chunk))
+                p_base[k] = v
+        p_base.update(fixed)
+
+        # Generate realizations for this setting
+        for m in range(n_realizations):
+            p_real = p_base.copy()
+            p_real["m"] = m
+            p_real["trial_id"] = make_trial_id(p_real)
+            futures.append(ray_run_trial.remote(p_real, checkpoint_dir, steps_per_chunk))
 
     for i, future in enumerate(futures):
         result = ray.get(future)
         append_result(result, output_path)
-        logger.info(f"Random trial {i + 1}/{n_trials} done.")
+        logger.info(f"Random trial realization {i + 1}/{n_trials * n_realizations} done.")
 
 
 # ---------------------------------------------------------------------------

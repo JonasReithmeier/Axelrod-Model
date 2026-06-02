@@ -150,6 +150,7 @@ def run_trial(params, checkpoint_dir="checkpoints", steps_per_chunk=None):
         dev_mode=int(params.get("dev_mode", 0)),
         dev_param=params.get("dev_param", None),
         seed=int(params["seed"]),
+        m=int(params.get("m", 0)),
     )
 
     # Try to resume from checkpoint

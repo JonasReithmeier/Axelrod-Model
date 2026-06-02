@@ -30,6 +30,7 @@ class AxelrodDevSmallWorld:
         dev_mode=0,
         dev_param=None,
         seed=42,
+        m=0,
     ):
         """
         Parameters
@@ -57,11 +58,12 @@ class AxelrodDevSmallWorld:
         self.dev_mode = dev_mode
         self.dev_param = dev_param
         self.seed = seed
+        self.m=m
 
         # Deterministic seed derived from all params so two runs with the
         # same config are bit-identical even after a checkpoint resume.
         seed_context = (
-            f"{seed}_{N}_{k}_{p}_{F}_{q}_{weight_mode}_{alpha}_"
+            f"{seed}_{m}_{N}_{k}_{p}_{F}_{q}_{weight_mode}_{alpha}_"
             f"{dis_threshold}_{dev_mode}_{dev_param}"
         )
         derived_seed = int(hashlib.md5(seed_context.encode()).hexdigest()[:16], 16)
