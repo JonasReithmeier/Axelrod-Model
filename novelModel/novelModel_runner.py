@@ -40,6 +40,7 @@ def save_checkpoint(model, trial_id, checkpoint_dir, params):
         adj_matrix=cp["adj_matrix"],
         updates=np.array([cp["updates"]], dtype=np.int64),
         total_steps=np.array([cp["total_steps"]], dtype=np.int64),
+        capacity_exceeded=np.array([cp["capacity_exceeded"]], dtype=np.int64),
         # RNG state is a dict — serialize its arrays manually
         rng_state_state=cp["rng_state"]["state"]["state"],
         rng_state_inc=cp["rng_state"]["state"]["inc"],
@@ -54,7 +55,32 @@ def load_checkpoint(model, trial_id, checkpoint_dir):
     path = _checkpoint_path(checkpoint_dir, trial_id)
     if not os.path.exists(path):
         return False
-    data = np.load(path, allow_pickle=False)
+    
+    # Load with allow_pickle=True to support serialized dicts
+    data = np.load(path, allow_pickle=True)
+
+    grid_data = data["grid"]
+    padded_edges_data = data["padded_edges"]
+    dev_data = data["dev"]
+    adj_matrix_data = data["adj_matrix"]
+
+    # 1. Validate shapes to prevent out-of-bounds crashes in Numba
+    if grid_data.shape[0] != model.N or grid_data.shape[1] != model.F:
+        logger.warning(
+            f"Shape mismatch for 'grid' in checkpoint {path}. "
+            f"Expected ({model.N}, {model.F}), got {grid_data.shape}. "
+            f"Starting fresh."
+        )
+        return False
+
+    expected_edges_size = model.N * model.max_degree
+    if padded_edges_data.shape[0] != expected_edges_size:
+        logger.warning(
+            f"Shape mismatch for 'padded_edges' in checkpoint {path}. "
+            f"Expected size {expected_edges_size}, got {padded_edges_data.shape[0]}. "
+            f"Starting fresh."
+        )
+        return False
 
     rng_state = {
         "bit_generator": "PCG64",
@@ -65,15 +91,19 @@ def load_checkpoint(model, trial_id, checkpoint_dir):
         "has_uint32": 0,
         "uinteger": 0,
     }
+
+    # 2. Force copies to ensure arrays are fully writeable in memory
     cp = {
-        "grid": data["grid"],
-        "dev": data["dev"],
-        "padded_edges": data["padded_edges"],
-        "adj_matrix": data["adj_matrix"].astype(np.bool_),
+        "grid": grid_data.copy(),
+        "dev": dev_data.copy(),
+        "padded_edges": padded_edges_data.copy(),
+        "adj_matrix": adj_matrix_data.astype(np.bool_),  # .astype() creates a copy automatically
         "updates": int(data["updates"][0]),
         "total_steps": int(data["total_steps"][0]),
+        "capacity_exceeded": int(data["capacity_exceeded"][0]) if "capacity_exceeded" in data else 0,
         "rng_state": rng_state,
     }
+    
     model.load_checkpoint_data(cp)
     logger.debug(f"Checkpoint loaded: {path}")
     return True
@@ -121,7 +151,10 @@ def run_trial(params, checkpoint_dir="checkpoints", steps_per_chunk=None):
         model.initialize_new_simulation()
         logger.info(f"[{trial_id}] Starting fresh.")
     else:
-        logger.info(f"[{trial_id}] Resumed from step {model.total_steps}.")
+        logger.info(
+            f"[{trial_id}] Resumed from step {model.total_steps}."
+            f"Prior capacity exceeded count: {model.capacity_exceeded}"
+            )
 
     if steps_per_chunk is None:
         steps_per_chunk = model.N * 1000  # 1000 sweeps per checkpoint interval
@@ -139,7 +172,7 @@ def run_trial(params, checkpoint_dir="checkpoints", steps_per_chunk=None):
         save_checkpoint(model, trial_id, checkpoint_dir, params)
         logger.info(
             f"[{trial_id}] step={model.total_steps}/{max_steps} "
-            f"converged={converged}"
+            f"converged={converged} capacity_blocked={model.capacity_exceeded}"
         )
 
         if converged:
@@ -158,8 +191,12 @@ def run_trial(params, checkpoint_dir="checkpoints", steps_per_chunk=None):
         "converged": converged,
         "total_steps": model.total_steps,
         "elapsed_s": elapsed,
+        "capacity_exceeded": model.capacity_exceeded,
         **metrics,
     }
 
-    logger.info(f"[{trial_id}] Done. converged={converged} metrics={metrics}")
+    logger.info(
+        f"[{trial_id}] Done. converged={converged} metrics={metrics}"
+        f"capacity_blocked={model.capacity_exceeded} metrics={metrics}"
+        )
     return result

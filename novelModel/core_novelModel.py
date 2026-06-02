@@ -84,6 +84,7 @@ def get_degree(edge_ptrs, padded_edges, node, max_degree):
 def has_edge(adj_matrix, i, j, N):
     """O(1) connectivity check via boolean adjacency matrix."""
     return adj_matrix[i * N + j]
+    
 
 @njit(inline='always')
 def add_edge(padded_edges, adj_matrix, i, j, N, max_degree):
@@ -152,7 +153,20 @@ def check_frozen_cultural(grid, padded_edges, N, F, max_degree):
     return True
 
 # ---------------------------------------------------------------------------
-# Single-step kernel
+# Capacity Helper
+# ---------------------------------------------------------------------------
+
+@njit(inline='always')
+def is_node_full(padded_edges, node, max_degree):
+    """Returns True if the node has no free neighbor slots."""
+    start = node * max_degree
+    for k in range(max_degree):
+        if padded_edges[start + k] == -1:
+            return False  # Found at least one free slot
+    return True
+
+# ---------------------------------------------------------------------------
+# Reorganized Step Kernel
 # ---------------------------------------------------------------------------
 
 @njit
@@ -160,12 +174,12 @@ def step_dev_sw(grid, dev, padded_edges, adj_matrix, N, F, weight_mode, alpha,
                 dis_threshold, rng, max_degree,
                 neighbor_buf, dis_buf):
     """
-    One elementary step. Returns (rewired, interacted).
-    neighbor_buf and dis_buf are pre-allocated scratch arrays of size max_degree.
+    One elementary step. Reorganized execution flow.
+    Returns (rewired_flag, interacted_flag, capacity_exceeded_flag).
     """
     agent_i = int(rng.random() * N)
 
-    # Collect neighbors and their dissatisfactions
+    # 1. Collect neighbors and their dissatisfactions
     start = agent_i * max_degree
     n_neighbors = 0
     for k in range(max_degree):
@@ -181,71 +195,86 @@ def step_dev_sw(grid, dev, padded_edges, adj_matrix, N, F, weight_mode, alpha,
         dis_buf[n_neighbors] = d
         n_neighbors += 1
 
+    # --- FIRST: No neighbors logic ---
     if n_neighbors == 0:
-        return False, False
-
-    # Average dissatisfaction
-    avg_dis = 0.0
-    for k in range(n_neighbors):
-        avg_dis += dis_buf[k]
-    avg_dis /= n_neighbors
-
-    if avg_dis > dis_threshold:
-        # --- REWIRE: cut worst edge, reconnect randomly ---
-        worst_k = 0
-        worst_dis = dis_buf[0]
-        for k in range(1, n_neighbors):
-            if dis_buf[k] > worst_dis:
-                worst_dis = dis_buf[k]
-                worst_k = k
-        worst_j = neighbor_buf[worst_k]
-
-        # Find a random non-neighbor (not self, not already connected)
-        # Try up to N attempts to find a valid target
         new_j = -1
-        for _ in range(N):
+        # Look for a random available non-full agent (up to 2*N attempts)
+        for _ in range(N * 2):
             candidate = int(rng.random() * N)
             if candidate == agent_i:
                 continue
             if has_edge(adj_matrix, agent_i, candidate, N):
                 continue
+            if is_node_full(padded_edges, candidate, max_degree):
+                continue
             new_j = candidate
             break
 
         if new_j != -1:
-            remove_edge(padded_edges, adj_matrix, agent_i, worst_j, N, max_degree)
             add_edge(padded_edges, adj_matrix, agent_i, new_j, N, max_degree)
+            return True, False, False  # Rewired successfully
+        else:
+            return False, False, True  # No available node found (capacity exceeded)
 
-        return True, False
+    # --- SECOND: Always try Axelrod interaction first ---
+    choice_k = int(rng.random() * n_neighbors)
+    agent_j = neighbor_buf[choice_k]
+    dis_ij = dis_buf[choice_k]
 
-    else:
-        # --- INTERACT: pick random neighbor, copy with prob 1 - dis ---
-        choice_k = int(rng.random() * n_neighbors)
-        agent_j = neighbor_buf[choice_k]
-        dis_ij = dis_buf[choice_k]
+    # Find differing traits
+    diff_count = 0
+    diff_buf_local = np.empty(F, dtype=np.int32)
+    for f in range(F):
+        if grid[agent_i, f] != grid[agent_j, f]:
+            diff_buf_local[diff_count] = f
+            diff_count += 1
 
+    # If partners are NOT completely similar, interaction is possible
+    if diff_count > 0:
         prob_copy = 1.0 - dis_ij
-        if prob_copy <= 0.0:
-            return False, False  # null step
-
         if rng.random() < prob_copy:
-            # Find differing traits
-            diff_count = 0
-            diff_buf_local = np.empty(F, dtype=np.int32)
-            for f in range(F):
-                if grid[agent_i, f] != grid[agent_j, f]:
-                    diff_buf_local[diff_count] = f
-                    diff_count += 1
+            # Axelrod interaction successful
+            trait = diff_buf_local[int(rng.random() * diff_count)]
+            grid[agent_i, trait] = grid[agent_j, trait]
+            return False, True, False
 
-            if diff_count > 0:
-                trait = diff_buf_local[int(rng.random() * diff_count)]
-                grid[agent_i, trait] = grid[agent_j, trait]
-                return False, True
+        # --- THIRD: Interaction failed, trigger mobility fallback ---
+        avg_dis = 0.0
+        for k in range(n_neighbors):
+            avg_dis += dis_buf[k]
+        avg_dis /= n_neighbors
 
-        return False, False
+        if avg_dis > dis_threshold:
+            worst_k = 0
+            worst_dis = dis_buf[0]
+            for k in range(1, n_neighbors):
+                if dis_buf[k] > worst_dis:
+                    worst_dis = dis_buf[k]
+                    worst_k = k
+            worst_j = neighbor_buf[worst_k]
+
+            # Find new target connection
+            new_j = -1
+            for _ in range(N):
+                candidate = int(rng.random() * N)
+                if candidate == agent_i or has_edge(adj_matrix, agent_i, candidate, N):
+                    continue
+                new_j = candidate
+                break
+
+            if new_j != -1:
+                if is_node_full(padded_edges, new_j, max_degree):
+                    return False, False, True  # Blocked by capacity limit
+
+                remove_edge(padded_edges, adj_matrix, agent_i, worst_j, N, max_degree)
+                add_edge(padded_edges, adj_matrix, agent_i, new_j, N, max_degree)
+                return True, False, False
+
+    # Default fallback (e.g. completely similar or average dissatisfaction too low)
+    return False, False, False
 
 # ---------------------------------------------------------------------------
-# Chunk runner
+# Chunk Runner (Bubbles capacity_exceeded_count up)
 # ---------------------------------------------------------------------------
 
 @njit
@@ -253,41 +282,43 @@ def run_steps_chunk(grid, dev, padded_edges, adj_matrix, N, F, weight_mode, alph
                     dis_threshold, max_steps, updates_since_change, threshold,
                     rng, max_degree):
     """
-    Returns (steps_done, rewire_count, updates_since_change, hit_threshold).
-    updates_since_change counts steps with no culture change (for freeze detection).
-    rewire_count counts rewiring events this chunk (for rewiring rate).
+    Returns (steps_done, rewire_count, updates_since_change, hit_threshold, capacity_exceeded_count).
     """
     neighbor_buf = np.empty(max_degree, dtype=np.int32)
     dis_buf = np.empty(max_degree, dtype=np.float32)
     rewire_count = 0
+    capacity_exceeded_count = 0
 
     for step in range(max_steps):
-        rewired, interacted = step_dev_sw(
+        rewired, interacted, cap_exceeded = step_dev_sw(
             grid, dev, padded_edges, adj_matrix, N, F, weight_mode, alpha,
             dis_threshold, rng, max_degree, neighbor_buf, dis_buf
         )
 
-        if rewired:
+        if cap_exceeded:
+            capacity_exceeded_count += 1
+            updates_since_change += 1
+        elif rewired:
             rewire_count += 1
-            updates_since_change += 1  # rewiring doesn't count as culture change
+            updates_since_change += 1  # Structural change does not reset freeze window
         elif interacted:
-            updates_since_change = 0
+            updates_since_change = 0   # Reset culture freeze window on successful copy
         else:
             updates_since_change += 1
 
         if updates_since_change >= threshold:
-            return step + 1, rewire_count, updates_since_change, True
+            return step + 1, rewire_count, updates_since_change, True, capacity_exceeded_count
 
-    return max_steps, rewire_count, updates_since_change, False
+    return max_steps, rewire_count, updates_since_change, False, capacity_exceeded_count
 
 # ---------------------------------------------------------------------------
-# Monitoring phase (tracks rewiring rate, uses linregress slope)
+# Monitoring Phase
 # ---------------------------------------------------------------------------
 
 @njit
 def run_monitoring_phase(grid, dev, padded_edges, adj_matrix, N, F, weight_mode, alpha,
                          dis_threshold, rng, updates_since_change, max_degree):
-    monitoring_steps = N * 500  # 500 sweeps worth of steps
+    monitoring_steps = N * 500
     sweep_size = N
     n_sweeps = monitoring_steps // sweep_size
 
@@ -299,11 +330,13 @@ def run_monitoring_phase(grid, dev, padded_edges, adj_matrix, N, F, weight_mode,
     for sweep in range(n_sweeps):
         sweep_rewires = 0
         for _ in range(sweep_size):
-            rewired, interacted = step_dev_sw(
+            rewired, interacted, cap_exceeded = step_dev_sw(
                 grid, dev, padded_edges, adj_matrix, N, F, weight_mode, alpha,
                 dis_threshold, rng, max_degree, neighbor_buf, dis_buf
             )
-            if rewired:
+            if cap_exceeded:
+                updates_since_change += 1
+            elif rewired:
                 sweep_rewires += 1
                 updates_since_change += 1
             elif interacted:

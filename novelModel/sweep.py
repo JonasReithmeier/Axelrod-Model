@@ -217,8 +217,8 @@ def main():
         format="%(asctime)s %(levelname)s %(message)s",
     )
     parser = argparse.ArgumentParser(description="Dev-SW parameter sweep")
-    parser.add_argument("--config", required=True, help="Path to config.yaml")
-    parser.add_argument("--output", default="results.csv", help="Output CSV path")
+    parser.add_argument("--config", default="novelModel/config_novelModel.yaml", help="Path to config.yaml")
+    parser.add_argument("--output", default="data/novelModel/results.csv", help="Output CSV path")
     parser.add_argument("--n-trials", type=int, default=100,
                         help="Number of trials (random/tpe/cmaes modes)")
     args = parser.parse_args()
