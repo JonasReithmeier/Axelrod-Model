@@ -138,7 +138,7 @@ as_mobility_experiment:
 schelling_plotter:
   input_file: "data/schelling/schelling_master_results.parquet"
   output_dir: "plots/task3"
-  target_F: 10
+  target_F: 3
 
   plot1_low_density:
     h: 0.05
