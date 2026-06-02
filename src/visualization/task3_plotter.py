@@ -2,9 +2,39 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from pathlib import Path
+import yaml
+import itertools
+
+def load_config(config_path="config.yaml"):
+    """Loads the YAML configuration file."""
+    path = Path(config_path)
+    if not path.exists():
+        raise FileNotFoundError(f"Config file not found at {config_path}")
+    with open(path, "r") as f:
+        return yaml.safe_load(f)
+
+def get_style_generator():
+    """Returns dynamic generators for markers and colors to prevent KeyErrors on new params."""
+    markers = itertools.cycle(['o', 's', '^', 'D', 'v', '>', '<', 'p', 'h', '*'])
+    colors = itertools.cycle([
+        'gray', 'coral', 'forestgreen', 'mediumpurple', 'orchid', 
+        'palevioletred', 'dodgerblue', 'darkorange', 'teal'
+    ])
+    return markers, colors
+
+def format_list_for_fname(lst):
+    """Helper to cleanly format lists into filename strings (e.g., [0.3, 0.7] -> '0.3-0.7')"""
+    return "-".join(map(str, lst))
 
 def main():
-    db_path = Path("data/schelling/schelling_master_results.parquet")
+    # 0. Load Configuration
+    full_config = load_config()
+    if 'schelling_plotter' not in full_config:
+        print("Error: 'schelling_plotter' entry missing from config.yaml")
+        return
+    cfg = full_config['schelling_plotter']
+
+    db_path = Path(cfg.get('input_file', "data/schelling/schelling_master_results.parquet"))
     if not db_path.exists():
         print(f"Database not found at {db_path}")
         return
@@ -18,11 +48,11 @@ def main():
     df['q_N'] = df['q'] / df['N']
 
     # 3. Setup output directory
-    out_dir = Path("plots/task3")
+    out_dir = Path(cfg.get('output_dir', "plots/task3"))
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # Filter for F=3 as per the new config
-    target_F = 10
+    # Global variables from config
+    target_F = cfg.get('target_F', 10)
     print(f"Filtering data for F={target_F}...")
     df_f = df[df['F'] == target_F]
 
@@ -41,32 +71,22 @@ def main():
     })
 
     # =========================================================
-    # PLOT 1: Low Empty Density (Reproducing the new FIG 1)
-    # Fixed: h = 0.05
-    # Varying: L in [20, 30, 40] and T in [0.2, 0.8]
+    # PLOT 1: Low Empty Density
     # =========================================================
-    print("Generating Plot 1 (Low Empty Density h=0.05)...")
-    h1 = 0.05
+    p1_cfg = cfg['plot1_low_density']
+    h1 = p1_cfg['h']
+    widths_p1 = p1_cfg['L_values']
+    Ts_p1 = p1_cfg['T_values']
     
+    print(f"Generating Plot 1 (Low Empty Density h={h1})...")
     mask_p1 = np.isclose(df_f['h'], h1)
     df_p1 = df_f[mask_p1]
     
     plt.figure(figsize=(7, 5))
     
-    widths_p1 = [20, 30, 40]
-    Ts_p1 = [0.2, 0.8] # Using your config's T values instead of 0.3/0.7
-    
-    # Mapping exact markers and colors from the paper
-    styles_p1 = {
-        (20, 0.2): {'marker': 'o', 'color': 'gray'},
-        (20, 0.8): {'marker': 's', 'color': 'coral'},
-        (30, 0.2): {'marker': 'D', 'color': 'forestgreen'},
-        (30, 0.8): {'marker': '^', 'color': 'mediumpurple'},
-        (40, 0.2): {'marker': 'v', 'color': 'orchid'},
-        (40, 0.8): {'marker': '>', 'color': 'palevioletred'}
-    }
-
+    markers_p1, colors_p1 = get_style_generator()
     plotted_lines = 0
+    
     for w in widths_p1:
         for t_val in Ts_p1:
             d = df_p1[(df_p1['L'] == w) & np.isclose(df_p1['T'], t_val)]
@@ -74,11 +94,10 @@ def main():
                 continue
             
             grouped = d.groupby('q_N')['s_max'].mean().reset_index().sort_values('q_N')
-            style = styles_p1[(w, t_val)]
             
             plt.plot(grouped['q_N'], grouped['s_max'], 
-                     marker=style['marker'], linestyle='--', linewidth=1,
-                     color=style['color'], markerfacecolor='none', markeredgewidth=1.2,
+                     marker=next(markers_p1), linestyle='--', linewidth=1,
+                     color=next(colors_p1), markerfacecolor='none', markeredgewidth=1.2,
                      label=f'L={w} T={t_val}')
             plotted_lines += 1
 
@@ -92,28 +111,28 @@ def main():
         plt.legend(loc='upper right', framealpha=1.0, edgecolor='black')
         
     plt.tight_layout()
-    plt.savefig(f"{out_dir}/fig1_low_density_h{h1}_F{target_F}.png", dpi=300, bbox_inches='tight')
+    # Highly detailed filename
+    fname1 = f"fig1_low_density_h{h1}_F{target_F}_L{format_list_for_fname(widths_p1)}_T{format_list_for_fname(Ts_p1)}.png"
+    plt.savefig(out_dir / fname1, dpi=300, bbox_inches='tight')
     plt.close()
 
+    # =========================================================
+    # PLOT 2: Varying Lattice Size L
+    # =========================================================
+    p2_cfg = cfg['plot2_lattice_scaling']
+    h2 = p2_cfg['h']
+    T2 = p2_cfg['T']
+    widths_p2 = p2_cfg['L_values']
 
-    # =========================================================
-    # PLOT 2: Varying Lattice Size L (Reproducing FIG 2a)
-    # Fixed: h = 0.5, T = 0.8 (Using 0.8 from config instead of 0.7)
-    # =========================================================
-    print("Generating Plot 2 (Lattice Size Scaling)...")
-    h2 = 0.5
-    T2 = 0.8
-    
+    print(f"Generating Plot 2 (Lattice Size Scaling h={h2}, T={T2})...")
     mask_p2 = np.isclose(df_f['h'], h2) & np.isclose(df_f['T'], T2)
     df_p2 = df_f[mask_p2]
     
     plt.figure(figsize=(7, 5))
     
-    widths_p2 = [10, 20, 30, 40]
-    markers_L = {10: 'v', 20: 'o', 30: 's', 40: 'D'}
-    colors_L = {10: 'forestgreen', 20: 'gray', 30: 'coral', 40: 'mediumpurple'}
-
+    markers_p2, colors_p2 = get_style_generator()
     plotted_lines = 0
+
     for w in widths_p2:
         d = df_p2[df_p2['L'] == w]
         if d.empty: 
@@ -122,8 +141,8 @@ def main():
         grouped = d.groupby('q_N')['s_max'].mean().reset_index().sort_values('q_N')
         
         plt.plot(grouped['q_N'], grouped['s_max'], 
-                 marker=markers_L[w], linestyle='--', linewidth=1,
-                 color=colors_L[w], markerfacecolor='none', markeredgewidth=1.2,
+                 marker=next(markers_p2), linestyle='--', linewidth=1,
+                 color=next(colors_p2), markerfacecolor='none', markeredgewidth=1.2,
                  label=f'L={w}')
         plotted_lines += 1
 
@@ -137,26 +156,28 @@ def main():
         plt.legend(loc='upper right', framealpha=1.0, edgecolor='black')
         
     plt.tight_layout()
-    plt.savefig(f"{out_dir}/fig2a_lattice_scaling_h{h2}_F{target_F}_T{T2}.png", dpi=300, bbox_inches='tight')
+    # Highly detailed filename
+    fname2 = f"fig2a_lattice_scaling_h{h2}_F{target_F}_T{T2}_L{format_list_for_fname(widths_p2)}.png"
+    plt.savefig(out_dir / fname2, dpi=300, bbox_inches='tight')
     plt.close()
 
+    # =========================================================
+    # PLOT 3: Varying Tolerance T
+    # =========================================================
+    p3_cfg = cfg['plot3_tolerance_scaling']
+    h3 = p3_cfg['h']
+    L3 = p3_cfg['L']
+    Ts_p3 = p3_cfg['T_values']
 
-    # =========================================================
-    # PLOT 3: Varying Tolerance T (Reproducing FIG 2b)
-    # Fixed: h = 0.5, L = 40
-    # =========================================================
-    print("Generating Plot 3 (Tolerance Scaling)...")
-    
-    mask_p3 = np.isclose(df_f['h'], 0.5) & (df_f['L'] == 40)
+    print(f"Generating Plot 3 (Tolerance Scaling h={h3}, L={L3})...")
+    mask_p3 = np.isclose(df_f['h'], h3) & (df_f['L'] == L3)
     df_p3 = df_f[mask_p3]
     
     plt.figure(figsize=(7, 5))
     
-    Ts_p3 = [0.2, 0.5, 0.8]
-    markers_T = {0.2: '^', 0.5: 's', 0.8: 'o'}
-    colors_T = {0.2: 'orchid', 0.5: 'coral', 0.8: 'gray'}
-
+    markers_p3, colors_p3 = get_style_generator()
     plotted_lines = 0
+
     for t_val in Ts_p3:
         d = df_p3[np.isclose(df_p3['T'], t_val)]
         if d.empty: 
@@ -165,14 +186,14 @@ def main():
         grouped = d.groupby('q_N')['s_max'].mean().reset_index().sort_values('q_N')
         
         plt.plot(grouped['q_N'], grouped['s_max'], 
-                 marker=markers_T[t_val], linestyle='--', linewidth=1,
-                 color=colors_T[t_val], markerfacecolor='none', markeredgewidth=1.2,
+                 marker=next(markers_p3), linestyle='--', linewidth=1,
+                 color=next(colors_p3), markerfacecolor='none', markeredgewidth=1.2,
                  label=f'T={t_val}')
         plotted_lines += 1
 
     plt.xlabel('q/N')
     plt.ylabel(r'$\langle S_{max} \rangle / N$')
-    plt.title(f'Phase Transition on Schelling-Axelrod Model\n($F={target_F}$, $h={h2}$, $L=40$)', fontsize=15, pad=15)
+    plt.title(f'Phase Transition on Schelling-Axelrod Model\n($F={target_F}$, $h={h3}$, $L={L3}$)', fontsize=15, pad=15)
     plt.xlim(0, 6)
     plt.ylim(0, 1.05)
     
@@ -180,7 +201,9 @@ def main():
         plt.legend(loc='upper right', framealpha=1.0, edgecolor='black')
         
     plt.tight_layout()
-    plt.savefig(f"{out_dir}/fig2b_tolerance_scaling_h{h2}.png", dpi=300, bbox_inches='tight')
+    # Highly detailed filename
+    fname3 = f"fig2b_tolerance_scaling_h{h3}_F{target_F}_L{L3}_T{format_list_for_fname(Ts_p3)}.png"
+    plt.savefig(out_dir / fname3, dpi=300, bbox_inches='tight')
     plt.close()
 
     print(f"\nDone! Plots saved to {out_dir}/")

@@ -119,7 +119,7 @@ as_experiment:
 
     # T = Tolerance
     T: [0.3, 0.7] # 0.5,
-
+################################################################################
 as_mobility_experiment:
   master_seed: 42
   M_realizations: 1
@@ -133,3 +133,24 @@ as_mobility_experiment:
     q: [10, 100, 1000, 10000]
     h: [0.05, 0.5]
     T: [0.2, 0.8]
+
+###################################################################################
+schelling_plotter:
+  input_file: "data/schelling/schelling_master_results.parquet"
+  output_dir: "plots/task3"
+  target_F: 10
+
+  plot1_low_density:
+    h: 0.05
+    L_values: [20, 30, 40]
+    T_values: [0.3, 0.7]
+
+  plot2_lattice_scaling:
+    h: 0.5
+    T: 0.3
+    L_values: [10, 20, 30, 40]
+
+  plot3_tolerance_scaling:
+    h: 0.5
+    L: 40
+    T_values: [0.3, 0.7]
