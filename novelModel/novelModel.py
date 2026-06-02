@@ -70,7 +70,7 @@ class AxelrodDevSmallWorld:
         self.rng = np.random.default_rng(derived_seed)
 
         # Generous max-degree ceiling: 8x initial k (handles topology drift)
-        self.max_degree = min(self.k * 8, N - 1) #TODO  is that really safe. Maybe just replace with (N-1)
+        self.max_degree = N-1 #min(self.k * 8, N - 1) #TODO  is that really safe. Maybe just replace with (N-1): for large N can be very hard on the RAM to have N-1 !!!!!
 
         # State
         self.grid = None          # (N, F) int16

@@ -1,7 +1,7 @@
 study_name: overnight_v4
 checkpoint_dir: checkpoints/overnight_v4
 steps_per_chunk: 2000000
-n_parallel: 22
+n_parallel: 23
 
 sweep:
   mode: grid
