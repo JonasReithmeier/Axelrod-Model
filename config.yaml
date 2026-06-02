@@ -87,11 +87,11 @@ sw_experiment:
 as_experiment:
   master_seed: 42
   M_realizations: 10
-  max_mcs: 2000000
-  transient_mcs: 200000
+  max_mcs: 10000000
+  transient_mcs: 1000000
   sweep:
     L: [10, 20, 30, 40]
-    F: [3, 10]
+    F: [10]
 
     # Carefully curated to map q/N from 0.05 to 5.0 across all widths
     q:
@@ -119,14 +119,39 @@ as_experiment:
     h: [0.05, 0.5] #[0.05, 0.5]
 
     # T = Tolerance
-    T: [0.2, 0.8] # 0.5,
-
+    T: [0.3, 0.7] # 0.5,
+################################################################################
 as_mobility_experiment:
-  seed: 42
-  max_steps: 20000000 # 2x10^7 steps like the paper
+  master_seed: 42
+  M_realizations: 1
+  max_mcs: 2000000
+  data_points: 1000
+  db_path: data/schelling/mobility_trajectories.parquet
+  plot_dir: plots/schelling/mobility
   sweep:
-    width: [10, 20, 30, 40]
-    F: [3]
-    q: [90, 1350, 1800, 2400, 4500] # For L=30 (N=900), these yield q/N = 0.1, 1.5, 2.0, 5.0
-    h: [0.5]
+    L: [40]
+    F: [10]
+    q: [10, 100, 1000, 10000]
+    h: [0.05, 0.5]
     T: [0.2, 0.8]
+
+###################################################################################
+schelling_plotter:
+  input_file: "data/schelling/schelling_master_results.parquet"
+  output_dir: "plots/task3"
+  target_F: 10
+
+  plot1_low_density:
+    h: 0.05
+    L_values: [20, 30, 40]
+    T_values: [0.3, 0.7]
+
+  plot2_lattice_scaling:
+    h: 0.5
+    T: 0.3
+    L_values: [10, 20, 30, 40]
+
+  plot3_tolerance_scaling:
+    h: 0.5
+    L: 40
+    T_values: [0.3, 0.7]

@@ -1,0 +1,12 @@
+- small world: show graph as heatmap of q and p
+-standart: versch F N um thermodynamische slimit des phasenübergangs zu sehen, type of phase transitions: variance of order parameter (should be sharp peak func for the thermodynamical limit)
+computatioanal time: supp results
+charakterizing: 
+
+
+
+
+
+Aufteilung
+Noah: aufgabe 1: phasenübergang charakterisierung und siimulationen für schärfere Kurve, aufgabe 2 heatmap, Bericht schreiben
+Jonas: neues Model, Bericht schreiben

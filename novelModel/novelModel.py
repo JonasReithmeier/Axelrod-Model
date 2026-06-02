@@ -30,6 +30,7 @@ class AxelrodDevSmallWorld:
         dev_mode=0,
         dev_param=None,
         seed=42,
+        m=0,
     ):
         """
         Parameters
@@ -40,7 +41,7 @@ class AxelrodDevSmallWorld:
         F             : Number of cultural features
         q             : Number of cultural traits per feature
         weight_mode   : 0=linear, 1=quadratic, 2=biphasic, 3=attraction
-        alpha         : Strength of development weight function
+        alpha         : Strength of development weight function (const multiplied to weight function)
         dis_threshold : Average dissatisfaction above which agent rewires
         dev_mode      : 0=uniform, 1=normal, 2=pareto, 3=bimodal
         dev_param     : Shape/sigma parameter for dev distribution
@@ -57,18 +58,19 @@ class AxelrodDevSmallWorld:
         self.dev_mode = dev_mode
         self.dev_param = dev_param
         self.seed = seed
+        self.m=m
 
         # Deterministic seed derived from all params so two runs with the
         # same config are bit-identical even after a checkpoint resume.
         seed_context = (
-            f"{seed}_{N}_{k}_{p}_{F}_{q}_{weight_mode}_{alpha}_"
+            f"{seed}_{m}_{N}_{k}_{p}_{F}_{q}_{weight_mode}_{alpha}_"
             f"{dis_threshold}_{dev_mode}_{dev_param}"
         )
         derived_seed = int(hashlib.md5(seed_context.encode()).hexdigest()[:16], 16)
         self.rng = np.random.default_rng(derived_seed)
 
         # Generous max-degree ceiling: 8x initial k (handles topology drift)
-        self.max_degree = min(k * 8, N - 1)
+        self.max_degree = N-1 #min(self.k * 8, N - 1) #TODO  is that really safe. Maybe just replace with (N-1): for large N can be very hard on the RAM to have N-1 !!!!!
 
         # State
         self.grid = None          # (N, F) int16
@@ -78,6 +80,7 @@ class AxelrodDevSmallWorld:
 
         self.updates_since_last_change = 0
         self.total_steps = 0
+        self.capacity_exceeded = 0
 
     # ------------------------------------------------------------------
     # Graph construction
@@ -110,6 +113,7 @@ class AxelrodDevSmallWorld:
         self.dev = sample_development(self.N, self.dev_mode, self.dev_param, self.rng)
         self.updates_since_last_change = 0
         self.total_steps = 0
+        self.capacity_exceeded = 0
 
     # ------------------------------------------------------------------
     # Run
@@ -134,7 +138,7 @@ class AxelrodDevSmallWorld:
         # --- Phase 1: transient burn-in, no convergence checking ---
         if self.total_steps < transient_steps:
             to_do = min(steps_left, transient_steps - self.total_steps)
-            done, _, self.updates_since_last_change, _ = run_steps_chunk(
+            done, _, self.updates_since_last_change, _, cap_exceeded = run_steps_chunk(
                 self.grid, self.dev, self.padded_edges, self.adj_matrix,
                 self.N, self.F, self.weight_mode, self.alpha,
                 self.dis_threshold, to_do,
@@ -143,11 +147,12 @@ class AxelrodDevSmallWorld:
             )
             self.total_steps += done
             steps_left -= done
+            self.capacity_exceeded += cap_exceeded
 
         # --- Phase 2: chunked run with convergence checks ---
         while steps_left > 0:
             chunk = min(steps_left, self.N * 10)  # 10-sweep chunks
-            done, rewire_count, self.updates_since_last_change, hit = run_steps_chunk(
+            done, rewire_count, self.updates_since_last_change, hit, cap_exceeded = run_steps_chunk(
                 self.grid, self.dev, self.padded_edges, self.adj_matrix,
                 self.N, self.F, self.weight_mode, self.alpha,
                 self.dis_threshold, chunk,
@@ -156,6 +161,7 @@ class AxelrodDevSmallWorld:
             )
             self.total_steps += done
             steps_left -= done
+            self.capacity_exceeded += cap_exceeded
 
             if hit:
                 # Cultural freeze check
@@ -242,6 +248,7 @@ class AxelrodDevSmallWorld:
             "updates": self.updates_since_last_change,
             "rng_state": self.rng.bit_generator.state,
             "total_steps": self.total_steps,
+            "capacity_exceeded": self.capacity_exceeded,
         }
 
     def load_checkpoint_data(self, cp):
@@ -254,3 +261,4 @@ class AxelrodDevSmallWorld:
         self.updates_since_last_change = cp["updates"]
         self.rng.bit_generator.state = cp["rng_state"]
         self.total_steps = cp.get("total_steps", 0)
+        self.capacity_exceeded = cp.get("capacity_exceeded", 0)

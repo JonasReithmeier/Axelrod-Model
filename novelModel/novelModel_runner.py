@@ -40,6 +40,7 @@ def save_checkpoint(model, trial_id, checkpoint_dir, params):
         adj_matrix=cp["adj_matrix"],
         updates=np.array([cp["updates"]], dtype=np.int64),
         total_steps=np.array([cp["total_steps"]], dtype=np.int64),
+        capacity_exceeded=np.array([cp["capacity_exceeded"]], dtype=np.int64),
         # RNG state is a dict — serialize its arrays manually
         rng_state_state=cp["rng_state"]["state"]["state"],
         rng_state_inc=cp["rng_state"]["state"]["inc"],
@@ -50,12 +51,46 @@ def save_checkpoint(model, trial_id, checkpoint_dir, params):
     logger.debug(f"Checkpoint saved: {path}")
 
 
+# Updated load_checkpoint in novelModel_runner.py
+
 def load_checkpoint(model, trial_id, checkpoint_dir):
     path = _checkpoint_path(checkpoint_dir, trial_id)
     if not os.path.exists(path):
         return False
-    data = np.load(path, allow_pickle=False)
+    
+    try:
+        # Load the file safely
+        data = np.load(path, allow_pickle=True)
 
+        grid_data = data["grid"]
+        padded_edges_data = data["padded_edges"]
+        dev_data = data["dev"]
+        adj_matrix_data = data["adj_matrix"]
+
+        # Validate shapes
+        if grid_data.shape[0] != model.N or grid_data.shape[1] != model.F:
+            logger.warning(f"Shape mismatch 'grid' in checkpoint {path}. Starting fresh.")
+            return False
+
+        expected_edges_size = model.N * model.max_degree
+        if padded_edges_data.shape[0] != expected_edges_size:
+            logger.warning(f"Shape mismatch 'padded_edges' in checkpoint {path}. Starting fresh.")
+            return False
+
+    except Exception as e:
+        # Handle BadZipFile, OSError, KeyErrors, or other loading corruptions gracefully
+        logger.warning(
+            f"[{trial_id}] Checkpoint {path} is corrupted or incomplete ({type(e).__name__}: {e}). "
+            f"Starting this trial fresh."
+        )
+        # Attempt to delete the corrupted file so it does not cause future issues
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+        return False
+
+    # Reconstruct state if loading succeeded
     rng_state = {
         "bit_generator": "PCG64",
         "state": {
@@ -65,19 +100,21 @@ def load_checkpoint(model, trial_id, checkpoint_dir):
         "has_uint32": 0,
         "uinteger": 0,
     }
+
     cp = {
-        "grid": data["grid"],
-        "dev": data["dev"],
-        "padded_edges": data["padded_edges"],
-        "adj_matrix": data["adj_matrix"].astype(np.bool_),
+        "grid": grid_data.copy(),
+        "dev": dev_data.copy(),
+        "padded_edges": padded_edges_data.copy(),
+        "adj_matrix": adj_matrix_data.astype(np.bool_),
         "updates": int(data["updates"][0]),
         "total_steps": int(data["total_steps"][0]),
+        "capacity_exceeded": int(data["capacity_exceeded"][0]) if "capacity_exceeded" in data else 0,
         "rng_state": rng_state,
     }
+    
     model.load_checkpoint_data(cp)
     logger.debug(f"Checkpoint loaded: {path}")
     return True
-
 
 # ---------------------------------------------------------------------------
 # Single trial
@@ -113,6 +150,7 @@ def run_trial(params, checkpoint_dir="checkpoints", steps_per_chunk=None):
         dev_mode=int(params.get("dev_mode", 0)),
         dev_param=params.get("dev_param", None),
         seed=int(params["seed"]),
+        m=int(params.get("m", 0)),
     )
 
     # Try to resume from checkpoint
@@ -121,7 +159,10 @@ def run_trial(params, checkpoint_dir="checkpoints", steps_per_chunk=None):
         model.initialize_new_simulation()
         logger.info(f"[{trial_id}] Starting fresh.")
     else:
-        logger.info(f"[{trial_id}] Resumed from step {model.total_steps}.")
+        logger.info(
+            f"[{trial_id}] Resumed from step {model.total_steps}."
+            f"Prior capacity exceeded count: {model.capacity_exceeded}"
+            )
 
     if steps_per_chunk is None:
         steps_per_chunk = model.N * 1000  # 1000 sweeps per checkpoint interval
@@ -139,7 +180,7 @@ def run_trial(params, checkpoint_dir="checkpoints", steps_per_chunk=None):
         save_checkpoint(model, trial_id, checkpoint_dir, params)
         logger.info(
             f"[{trial_id}] step={model.total_steps}/{max_steps} "
-            f"converged={converged}"
+            f"converged={converged} capacity_blocked={model.capacity_exceeded}"
         )
 
         if converged:
@@ -158,8 +199,12 @@ def run_trial(params, checkpoint_dir="checkpoints", steps_per_chunk=None):
         "converged": converged,
         "total_steps": model.total_steps,
         "elapsed_s": elapsed,
+        "capacity_exceeded": model.capacity_exceeded,
         **metrics,
     }
 
-    logger.info(f"[{trial_id}] Done. converged={converged} metrics={metrics}")
+    logger.info(
+        f"[{trial_id}] Done. converged={converged} metrics={metrics}"
+        f"capacity_blocked={model.capacity_exceeded} metrics={metrics}"
+        )
     return result
