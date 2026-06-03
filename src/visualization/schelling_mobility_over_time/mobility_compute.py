@@ -7,10 +7,6 @@ journals results incrementally to a parquet database.
 Each (h, F, L, T, q_N, m) combination is one trajectory — a time series
 of (mcs, mobility) pairs stored as a single compressed row in the DB.
 
-Storing the full trajectory as an array per row (rather than one row per
-time point) keeps the parquet file compact and makes loading fast: reading
-one trajectory is one row fetch, not a filtered scan over millions of rows.
-
 Usage:
     python mobility_compute.py              # use config.yaml
     python mobility_compute.py --config path/to/config.yaml
@@ -30,13 +26,13 @@ import argparse
 import time
 import pickle
 import random
+import os
 from datetime import timedelta
 from itertools import product
-from pathlib import Path
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 import numpy as np
 import pandas as pd
-import yaml
 
 from src.model_as import AxelrodSchellingModel
 from src.core_as import run_mcs_chunk, calculate_mobility_as
@@ -60,34 +56,21 @@ def _save_db(df: pd.DataFrame, db_path: Path) -> None:
 
 
 def _existing_keys(df: pd.DataFrame) -> set:
-    """
-    Return set of (h, F, L, T, q_N, realization) tuples already in DB.
-    Tolerates old DBs that used 'm' instead of 'realization', and DBs
-    that are missing columns entirely (treats them as empty).
-    """
     if df.empty:
         return set()
     required = {"h", "F", "L", "T", "q_N"}
     if not required.issubset(df.columns):
         return set()
-    # Accept either column name for the realization index
     if "realization" in df.columns:
         real_col = df["realization"]
     elif "m" in df.columns:
         real_col = df["m"]
     else:
-        # No realization column at all — treat every row as realization 1
         real_col = pd.Series(1, index=df.index)
     return set(zip(df["h"], df["F"], df["L"], df["T"], df["q_N"], real_col))
 
 
 def _append_to_db(db_path: Path, row: dict) -> None:
-    """
-    Merge one completed trajectory row into the parquet DB atomically.
-    Trajectories are stored with numpy arrays serialised via pickle bytes
-    inside an object column — parquet handles bytes columns natively.
-    Migrates old DBs that used 'm' instead of 'realization' on the fly.
-    """
     df_old = _load_db(db_path)
     df_new = pd.DataFrame([row])
 
@@ -117,12 +100,6 @@ def run_trajectory(
     realization: int, master_seed: int,
     max_mcs: int, data_points: int,
 ) -> dict:
-    """
-    Run one full mobility trajectory and return a result dict.
-
-    The time axis (mcs_axis) and mobility values (m_values) are stored as
-    raw numpy arrays — compact and ready for direct plotting.
-    """
     model = AxelrodSchellingModel(
         L=L, F=F, q=q, h=h, T=T,
         m=realization, master_seed=master_seed,
@@ -134,7 +111,7 @@ def run_trajectory(
     max_degree = int(np.max(model.edge_ptrs[1:] - model.edge_ptrs[:-1]))
 
     mcs_per_sample = max(1, max_mcs // data_points)
-    huge           = np.iinfo(np.int64).max   # disable early-stopping
+    huge           = np.iinfo(np.int64).max
 
     mcs_axis = [0]
     m_values = [
@@ -175,7 +152,6 @@ def run_trajectory(
         "realization": realization,
         "max_mcs":     max_mcs,
         "data_points": len(mcs_axis),
-        # stored as pickle bytes — avoids ragged-array issues in parquet
         "mcs_axis":    pickle.dumps(np.array(mcs_axis, dtype=np.int64)),
         "m_values":    pickle.dumps(np.array(m_values, dtype=np.float64)),
     }
@@ -190,6 +166,8 @@ def main():
     parser.add_argument("--config",  default="config.yaml")
     parser.add_argument("--dry-run", action="store_true",
                         help="Print task list without running anything.")
+    parser.add_argument("--workers", type=int, default=None,
+                        help="Number of parallel CPU workers. Defaults to all available cores.")
     args = parser.parse_args()
 
     with open(args.config) as f:
@@ -205,7 +183,6 @@ def main():
     ))
     M = cfg.get("M_realizations", 1)
 
-    # Build task list excluding already-completed trajectories
     df_existing   = _load_db(db_path)
     existing_keys = _existing_keys(df_existing)
     print(f"DB loaded: {len(existing_keys)} trajectories already complete.")
@@ -238,35 +215,60 @@ def main():
                   f"h={t['h']} T={t['T']} real={t['realization']}")
         return
 
+    # Determine CPU workers
+    max_workers = args.workers or cfg.get("max_workers") or os.cpu_count()
+    print(f"Starting parallel execution with {max_workers} workers.")
     print("Graceful stop: create a file named STOP in this directory.\n")
 
     t0        = time.perf_counter()
     completed = 0
 
-    for task in tasks:
-        if stop.exists():
-            stop.unlink(missing_ok=True)
-            print("\nSTOP detected — exiting cleanly.")
-            break
+    # Execute tasks in parallel
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        # Submit all tasks to the executor
+        future_to_task = {
+            executor.submit(run_trajectory, **task): task 
+            for task in tasks
+        }
 
-        t_task = time.perf_counter()
-        label  = (f"L={task['L']} F={task['F']} q={task['q']} "
-                  f"h={task['h']} T={task['T']} r={task['realization']}")
-        print(f"  Running {label} ...", end=" ", flush=True)
+        # As each task completes, handle the output sequentially in the main thread
+        for future in as_completed(future_to_task):
+            task = future_to_task[future]
+            
+            # Check for STOP file
+            if stop.exists():
+                stop.unlink(missing_ok=True)
+                print("\nSTOP detected — cancelling pending jobs and exiting cleanly.")
+                # Cancel all futures that have not started yet
+                for fut in future_to_task:
+                    fut.cancel()
+                break
 
-        row = run_trajectory(**task)
-        _append_to_db(db_path, row)
+            try:
+                t_task_start = time.perf_counter()
+                row = future.result()
+                
+                # Append to DB in the main thread to avoid write conflicts
+                _append_to_db(db_path, row)
+                
+                completed += 1
+                task_time = time.perf_counter() - t_task_start
+                elapsed   = time.perf_counter() - t0
+                rate      = completed / elapsed
+                remaining = len(tasks) - completed
+                eta       = remaining / rate if rate > 0 else 0
 
-        completed += 1
-        elapsed   = time.perf_counter() - t0
-        task_time = time.perf_counter() - t_task
-        rate      = completed / elapsed
-        remaining = len(tasks) - completed
-        eta       = remaining / rate if rate > 0 else 0
+                label = (f"L={task['L']} F={task['F']} q={task['q']} "
+                         f"h={task['h']} T={task['T']} r={task['realization']}")
+                
+                print(f"  Done {label} ({task_time:.1f}s)  "
+                      f"[{completed}/{len(tasks)}  "
+                      f"ETA {timedelta(seconds=int(eta))}]")
 
-        print(f"done ({task_time:.1f}s)  "
-              f"[{completed}/{len(tasks)}  "
-              f"ETA {timedelta(seconds=int(eta))}]")
+            except Exception as exc:
+                label = (f"L={task['L']} F={task['F']} q={task['q']} "
+                         f"h={task['h']} T={task['T']} r={task['realization']}")
+                print(f"  Task {label} generated an exception: {exc}")
 
     total = time.perf_counter() - t0
     final_df = _load_db(db_path)
