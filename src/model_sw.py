@@ -3,12 +3,13 @@ import networkx as nx
 from .core_sw import run_steps_sw, get_cluster_metrics_sw, compute_clustering_coefficient, compute_characteristic_path_length
 
 class AxelrodSmallWorld:
-    def __init__(self, N=100, k=4, p=0.1, F=5, q=10, seed=42):
+    def __init__(self, N, k, p, F, q, iterationNumber, seed):
         self.N = N
         self.k = k        # Nearest neighbors to connect to initially (4 mimics 2D lattice)
         self.p = p        # Rewiring probability (0.0 = ring, 1.0 = random graph)
         self.F = F
         self.q = q
+        self.iterationNumber = iterationNumber
         self.seed = seed
 
         self.rng = np.random.default_rng(self.seed)
@@ -69,6 +70,7 @@ class AxelrodSmallWorld:
             "grid": self.grid,
             "updates": self.updates_since_last_change,
             "rng_state": self.rng.bit_generator.state,
+            "iterationNumber": self.iterationNumber,
             "total_steps": self.total_steps
         }
 
@@ -77,4 +79,5 @@ class AxelrodSmallWorld:
         self.grid = cp["grid"]
         self.updates_since_last_change = cp["updates"]
         self.rng.bit_generator.state = cp["rng_state"]
+        self.iterationNumber = cp['iterationNumber']
         self.total_steps = cp.get("total_steps", 0) 
