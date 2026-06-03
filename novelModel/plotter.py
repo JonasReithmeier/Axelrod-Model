@@ -1,136 +1,168 @@
 import os
 import argparse
+import itertools
+from pathlib import Path
 import yaml
-import pandas as pd
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 
-def load_config(config_path):
+def load_config(config_path="novelModel/plot_config.yaml"):
     """Loads the YAML configuration file."""
-    if not os.path.exists(config_path):
-        raise FileNotFoundError(f"Configuration file not found at: {config_path}")
-    with open(config_path, 'r') as f:
+    path = Path(config_path)
+    if not path.exists():
+        raise FileNotFoundError(f"Config file not found at {config_path}")
+    with open(path, "r") as f:
         return yaml.safe_load(f)
 
-def generate_plot(config):
-    # Load dataset
-    csv_path = config['data_path']
-    if not os.path.exists(csv_path):
-        raise FileNotFoundError(f"Dataset not found at: {csv_path}")
-    
-    df = pd.read_csv(csv_path)
-    
-    # 1. Apply filters to isolate the desired sweep parameters
-    filters = config.get('filters', {})
-    for col, val in filters.items():
-        if col in df.columns:
-            df = df[df[col] == val]
-        else:
-            print(f"Warning: Filter column '{col}' not found in dataset. Skipping.")
-            
-    if df.empty:
-        raise ValueError("The dataset is empty after applying the specified filters. Check your filter values.")
+def get_style_generator():
+    """Generates cycling markers and colors for plotting curves."""
+    markers = itertools.cycle(['o', 's', '^', 'D', 'v', '>', '<', 'p', 'h', '*'])
+    colors = itertools.cycle([
+        'black', 'red', 'blue', 'magenta', 'forestgreen', 'darkorange', 'teal', 'mediumpurple'
+    ])
+    return markers, colors
 
-    # 2. Construct the X-axis variable (with optional normalization)
-    x_var = config['x_var']
-    norm_col = config.get('normalize_x_by')
+def safe_filter(df, filter_dict):
+    """Filters dataframe safely, handling floating point precision with np.isclose."""
+    mask = np.ones(len(df), dtype=bool)
+    for col, val in filter_dict.items():
+        if col not in df.columns:
+            continue
+        if isinstance(val, (int, float)) and not isinstance(val, bool):
+            mask &= np.isclose(df[col], val)
+        else:
+            mask &= (df[col] == val)
+    return df[mask]
+
+def main():
+    parser = argparse.ArgumentParser(description="Multi-plot generator for novelModel results.")
+    parser.add_argument("--config", type=str, default="novelModel/plot_config.yaml", help="Path to config file.")
+    args = parser.parse_args()
+
+    # 1. Load Configuration
+    full_config = load_config(args.config)
+    if 'novel_plotter' not in full_config:
+        print("Error: 'novel_plotter' section missing from config file.")
+        return
+    cfg = full_config['novel_plotter']
+
+    db_path = Path(cfg.get('input_file', "novelModel/data/results.csv"))
+    if not db_path.exists():
+        print(f"Dataset file not found at {db_path}")
+        return
+
+    # 2. Load Data
+    print(f"\n--- Loading database from {db_path} ---")
+    df = pd.read_csv(db_path)
+    print(f"Total entries loaded: {len(df)}")
     
-    if norm_col:
-        df['x_plot'] = df[x_var] / df[norm_col]
+    # Calculate relative coordinates (X-axis)
+    if 'q' in df.columns and 'N' in df.columns:
+        df['q_N'] = df['q'] / df['N']
     else:
-        df['x_plot'] = df[x_var]
+        print("CRITICAL: 'q' or 'N' column missing from dataset.")
+        return
 
-    # 3. Aggregate data over realizations (calculating mean and standard error of the mean)
-    group_col = config['group_by']
-    y_col = config['y_var']
-    
-    # Group by the curve identifier and the x-axis value
-    grouped = df.groupby([group_col, 'x_plot'])[y_col].agg(['mean', 'std', 'count']).reset_index()
-    # Standard Error of the Mean (SEM) = std / sqrt(N)
-    grouped['sem'] = grouped['std'] / np.sqrt(grouped['count'])
-    
-    # Sort groups to ensure continuous line plotting
-    grouped = grouped.sort_values(by=[group_col, 'x_plot'])
+    # Setup output directory
+    out_dir = Path(cfg.get('output_dir', "plots/novel_model"))
+    out_dir.mkdir(parents=True, exist_ok=True)
 
-    # 4. Initialize Plot Style
-    style = config.get('style', {})
-    plt.rcParams.update({'font.size': style.get('font_size', 12)})
-    fig, ax = plt.subplots(figsize=style.get('aspect_ratio', [7, 6]))
+    # Apply global filters
+    global_filters = cfg.get('global_filters', {})
+    df_global = safe_filter(df, global_filters)
+    print(f"Entries after applying global filters: {len(df_global)}")
     
-    # Classic Physical Review marker and color cycle
-    markers = ['o', 's', 'D', '^', 'v', '<', '>', 'p', '*']
-    colors = ['black', 'red', 'blue', 'magenta', 'green', 'orange', 'cyan']
-    
-    unique_groups = sorted(grouped[group_col].unique())
-    
-    for i, grp_val in enumerate(unique_groups):
-        sub_df = grouped[grouped[group_col] == grp_val]
+    if df_global.empty:
+        print("Warning: No records left after global filtering.")
+        return
+
+    # Academic-standard style adjustments
+    plt.rcParams.update({
+        'font.size': 11,
+        'axes.labelsize': 13,
+        'legend.fontsize': 10,
+        'xtick.direction': 'in',
+        'ytick.direction': 'in',
+        'xtick.top': True,
+        'ytick.right': True,
+        'axes.grid': True,
+        'grid.alpha': 0.25,
+        'grid.linestyle': '--'
+    })
+
+    # 3. Process and Plot Each Target Run
+    plots_list = cfg.get('plots', [])
+    for idx, plot_cfg in enumerate(plots_list, 1):
+        plot_name = plot_cfg.get('name', f"plot_{idx}")
+        plot_title = plot_cfg.get('title', "")
         
-        marker = markers[i % len(markers)]
-        color = colors[i % len(colors)]
-        label = f"{group_col}={int(grp_val) if grp_val.is_integer() else grp_val}"
+        # Merge global filters with localized figure filters
+        local_filters = plot_cfg.get('filters', {})
+        df_local = safe_filter(df_global, local_filters)
         
-        if style.get('show_error_bars', True) and 'sem' in sub_df.columns:
-            ax.errorbar(
-                sub_df['x_plot'], sub_df['mean'], yerr=sub_df['sem'],
-                label=label,
-                marker=marker, color=color, markerfacecolor='none',
-                linestyle=style.get('line_style', '--'), 
-                linewidth=1.2, markersize=style.get('marker_size', 7),
-                markeredgewidth=1.2, capsize=3, elinewidth=1.0
+        if df_local.empty:
+            print(f"\n[Skipping] '{plot_name}': No data matches filters {local_filters}")
+            continue
+
+        print(f"\nGenerating '{plot_name}'...")
+        
+        # Get variable parameter listings for generating curves
+        curve_vars = plot_cfg.get('curve_variables', {})
+        if not curve_vars:
+            print(f"  -> Skipping: No curve_variables defined for '{plot_name}'")
+            continue
+            
+        # Create a Cartesian product of all variable lists to find all lines
+        keys, values = zip(*curve_vars.items())
+        combinations = [dict(zip(keys, v)) for v in itertools.product(*values)]
+        
+        plt.figure(figsize=(6.5, 5.2))
+        markers, colors = get_style_generator()
+        plotted_lines = 0
+
+        for comb in combinations:
+            # Filter specifically down to this line's parameters
+            df_curve = safe_filter(df_local, comb)
+            if df_curve.empty:
+                continue
+            
+            # Aggregate multiple realization trials via mean and standard error
+            grouped = df_curve.groupby('q_N')['s_max'].agg(['mean', 'std', 'count']).reset_index().sort_values('q_N')
+            grouped['sem'] = grouped['std'] / np.sqrt(grouped['count'])
+            
+            # Build legend label dynamically
+            label_parts = [f"{k}={v}" for k, v in comb.items()]
+            label_text = ", ".join(label_parts)
+            
+            # Render lines with empty marker shapes and error boundaries
+            plt.errorbar(
+                grouped['q_N'], grouped['mean'], yerr=grouped['sem'].fillna(0),
+                marker=next(markers), linestyle='--', linewidth=1.2,
+                color=next(colors), markerfacecolor='none', markeredgewidth=1.2,
+                capsize=3, elinewidth=0.8, label=label_text
             )
+            plotted_lines += 1
+
+        if plotted_lines > 0:
+            plt.xlabel('$q / N$')
+            plt.ylabel(r'$\langle S_{max} \rangle / N$')
+            if plot_title:
+                plt.title(plot_title, fontsize=12, pad=10)
+                
+            plt.xlim(left=-0.05)
+            plt.ylim(-0.02, 1.05)
+            plt.legend(loc='best', framealpha=1.0, edgecolor='black', fancybox=False)
+            plt.tight_layout()
+            
+            output_file = out_dir / f"{plot_name}.png"
+            plt.savefig(output_file, dpi=300, bbox_inches='tight')
+            print(f"  -> Saved successfully: {output_file}")
         else:
-            ax.plot(
-                sub_df['x_plot'], sub_df['mean'],
-                label=label,
-                marker=marker, color=color, markerfacecolor='none',
-                linestyle=style.get('line_style', '--'), 
-                linewidth=1.2, markersize=style.get('marker_size', 7),
-                markeredgewidth=1.2
-            )
+            print(f"  -> Skipping '{plot_name}': No valid combinations found.")
+        plt.close()
 
-    # 5. Fine-tune Axes & Labels (matching the target visual style)
-    ax.set_xlabel(style.get('xlabel', 'x'), fontsize=style.get('font_size', 14) + 2)
-    ax.set_ylabel(style.get('ylabel', 'y'), fontsize=style.get('font_size', 14) + 2)
-    
-    # Inward-pointing tick marks on all sides
-    ax.tick_params(direction='in', top=True, right=True, which='both', length=6, width=1)
-    ax.tick_params(direction='in', which='minor', length=3)
-    
-    # Limits and layout spacing
-    ax.set_ylim(-0.02, 1.05)
-    ax.set_xlim(left=-0.05)
-    
-    # Legend style: elegant, boxed, matching the example image
-    ax.legend(
-        loc='upper right', 
-        frameon=True, 
-        edgecolor='black', 
-        fancybox=False, 
-        framealpha=1.0,
-        fontsize=style.get('font_size', 12) + 1
-    )
-    
-    plt.tight_layout()
-    
-    # Save figure
-    output_path = config.get('output_path', 'novelModel/plots/output_plot.png')
-    plt.savefig(output_path, dpi=300)
-    print(f"Plot successfully saved to: {output_path}")
-    plt.close()
+    print(f"\nDone! Figures saved in: {out_dir.resolve()}/")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Generate customizable academic plots from simulation CSVs.")
-    parser.add_argument(
-        "--config", 
-        type=str, 
-        default="novelModel/plot_config.yaml", 
-        help="Path to the YAML configuration file."
-    )
-    args = parser.parse_args()
-    
-    try:
-        config_data = load_config(args.config)
-        generate_plot(config_data)
-    except Exception as e:
-        print(f"Error: {e}")
+    main()
