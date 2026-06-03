@@ -1,0 +1,30 @@
+# Data paths
+data_path: "novelModel/data/results.csv"
+output_path: "novelModel/plots/smax_vs_qN_plot.png"
+
+# Filter sweep parameters to isolate a single slice of your simulation space
+filters:
+  p: 0
+  weight_mode: [0, 1]
+  alpha: 0.25
+  dis_threshold: 0.3
+  dev_mode: 0
+  dev_param: 0.15
+  F: 10
+  k: 4
+
+# Plot axis and grouping setup
+group_by: "N" # Column used to split data into different curves (e.g., L, alpha, etc.)
+x_var: "q" # Independent variable
+normalize_x_by: "N" # Column to divide x_var by (set to null if no normalization is needed)
+y_var: "s_max" # Dependent variable
+
+# Visual styling parameters
+style:
+  xlabel: "$q/N$"
+  ylabel: "$\\langle S_{\\max}/N \\rangle$"
+  show_error_bars: true # Compute and display standard error of the mean
+  font_size: 14
+  marker_size: 7
+  line_style: "--" # Dashed line matching the style of the target plot
+  aspect_ratio: [7, 6] # Figure width and height in inches
