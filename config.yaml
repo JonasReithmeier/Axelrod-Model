@@ -119,7 +119,7 @@ as_experiment:
   master_seed: 42
   M_realizations: 5
   max_mcs: 10000000
-  transient_mcs: 1000000
+  transient_mcs: 1000000 # can be cut down to 5k ??? look at mobility plots
   sweep:
     L: [20, 30, 40]
     F: [10]
@@ -155,7 +155,7 @@ as_experiment:
 as_mobility_experiment:
   master_seed: 42
   M_realizations: 1
-  max_mcs: 2000000
+  max_mcs: 100000
   data_points: 1000
   db_path: data/schelling/mobility_trajectories.parquet
   plot_dir: plots/schelling/mobility
