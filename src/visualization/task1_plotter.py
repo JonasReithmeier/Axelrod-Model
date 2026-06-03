@@ -40,7 +40,7 @@ def plot_axelrod_data():
 
     M_min = -1 # realizations (smallest group)
 
-    ploted_widths = [20,30,40,50]
+    ploted_widths = [20,30,40,50,100]
 
     #for F in unique_Fs:
     for F in [3]:

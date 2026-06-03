@@ -4,8 +4,19 @@ from pathlib import Path
 import matplotlib.cm as cm
 import numpy as np
 from pathlib import Path
+import yaml
+import math
+import seaborn as sns
 
-def recreate_watts_strogatz_plot(data_path="data/small_world/axelrod_sw_master_results.parquet"):
+def recreate_watts_strogatz_plot():
+
+    with open("config.yaml", "r") as f:
+        config = yaml.safe_load(f)
+    exp_cfg = config['sw_experiment']
+
+    dataDir_path = Path("data/small_world")
+
+    data_path = dataDir_path / (exp_cfg['database_name'] + '.parquet')
     file_path = Path(data_path)
     if not file_path.exists():
         print(f"Error: Could not find data file at {file_path}")
@@ -85,13 +96,15 @@ def recreate_watts_strogatz_plot(data_path="data/small_world/axelrod_sw_master_r
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.close() 
 
-def plot_sw_phase_transition(F_val=5, k_val=4, 
-                             target_p_values=[0.0, 0.001, 0.01, 0.1, 1.0],
-                             data_path="data/small_world/axelrod_sw_master_results.parquet"):
-    """
-    Plots the Axelrod model phase transition (s_max vs q) for specific rewiring 
-    probabilities (p), fixing F and k. Uses error bars for standard deviation.
-    """
+def init_db_connection():
+    with open("config.yaml", "r") as f:
+        config = yaml.safe_load(f)
+    exp_cfg = config['sw_experiment']
+
+    dataDir_path = Path("data/small_world")
+
+    data_path = dataDir_path / (exp_cfg['database_name'] + '.parquet')
+
     file_path = Path(data_path)
     if not file_path.exists():
         print(f"Error: Could not find data file at {file_path}")
@@ -99,9 +112,17 @@ def plot_sw_phase_transition(F_val=5, k_val=4,
 
     # 1. Load data
     df = pd.read_parquet(file_path)
+    return df
+
+def plot_sw_phase_transition(N_val,F_val, k_val, target_p_values,name):
+    """
+    Plots the Axelrod model phase transition (s_max vs q) for specific rewiring 
+    probabilities (p), fixing F and k. Uses error bars for standard deviation.
+    """
+    df = init_db_connection()
 
     # 2. Filter for the specific F and k
-    df_filtered = df[(df['F'] == F_val) & (df['k'] == k_val)]
+    df_filtered = df[(df['N'] == N_val) & (df['F'] == F_val) & (df['k'] == k_val)]
     
     # 3. Filter OUT old runs: keep only the targeted p values
     df_filtered = df_filtered[df_filtered['p'].isin(target_p_values)]
@@ -110,7 +131,7 @@ def plot_sw_phase_transition(F_val=5, k_val=4,
         print(f"Error: No data found for F={F_val}, k={k_val}, and specified p values.")
         return
         
-    N_val = df_filtered['N'].iloc[0]
+    #N_val = df_filtered['N'].iloc[0]
 
     # 4. Aggregate data: Mean and StdDev for s_max grouped by p and q
     grouped = df_filtered.groupby(['p', 'q'])['s_max'].agg(['mean', 'std']).reset_index()
@@ -127,15 +148,16 @@ def plot_sw_phase_transition(F_val=5, k_val=4,
     # 6. Plot using error bars
     for i, p in enumerate(p_values):
         subset = grouped[grouped['p'] == p].sort_values(by='q')
-        
+
         q_vals = subset['q']
+        number_realisations = len(q_vals)
         mean_smax = subset['mean']
-        std_smax = subset['std'].fillna(0) # Fill NaN with 0 if only 1 realization exists
+        std_smax = subset['std'].fillna(-1) # Fill NaN with 0 if only 1 realization exists
         
         # plt.errorbar replaces plot() and fill_between()
         # fmt='-o' creates a line with circular markers
         # capsize defines the width of the error bar caps
-        ax.errorbar(q_vals, mean_smax, yerr=std_smax, fmt='-o', 
+        ax.errorbar(q_vals, mean_smax, yerr=std_smax/math.sqrt(number_realisations), fmt='-o', 
                     markersize=5, linewidth=2, capsize=4, capthick=1.5, 
                     color=colors[i], label=f'p = {p}')
 
@@ -153,17 +175,85 @@ def plot_sw_phase_transition(F_val=5, k_val=4,
     ax.legend(title="Rewiring Prob ($p$)", fontsize=11, title_fontsize=12, loc='upper right')
 
     # 8. Output Management
-    out_dir = Path("plots/task2")
+    out_dir = Path("reportPlots/task2")
     out_dir.mkdir(parents=True, exist_ok=True)
     
-    out_file = out_dir / f"phase_transition_F{F_val}_k{k_val}.png"
+    out_file = out_dir / f"phase_transition_F{F_val}_k{k_val}_s{name}.png"
     plt.tight_layout()
     plt.savefig(out_file)
     plt.close(fig) 
     
     print(f"Success! Plot saved to: {out_file}")
     
+def std_error(value):
+    value = value/math.sqrt(number_realisations)
+    return value;
+def generateGraphics(df_filtered,metric, N_val, F_val, k_val):
+    grouped = df_filtered.groupby(['p', 'q'])[metric].agg(['mean', 'std']).reset_index()
+    global number_realisations 
+    number_realisations = len(grouped[grouped['p'] == 0])
+    grouped['std'] = grouped['std'].apply(std_error)
+    heatmap_data = grouped.pivot(index = 'q', columns='p', values='mean')
+    error_data = grouped.pivot(index = 'q', columns='p', values='std')
+
+    plt.figure(figsize=(12, 6))
+    sns.heatmap(heatmap_data)  # defaults include a colorbar
+    plt.xlabel("p")
+    plt.ylabel("q")
+    plt.title(f"{metric} Heatmap N = {N_val}, F = {F_val}, k = {k_val}")
+    plt.tight_layout()
+
+    out_dir = Path("reportPlots/task2") # TODO add report dir to config
+    out_dir.mkdir(parents=True, exist_ok=True)
+    
+    out_file = out_dir / f"heatmap_{metric}_N{N_val}_F{F_val}_k{k_val}.png"
+
+    plt.savefig(out_file)
+
+    plt.figure(figsize=(12, 6))
+    sns.heatmap(error_data)  # defaults include a colorbar
+    plt.xlabel("p")
+    plt.ylabel("q")
+    plt.title(f"{metric} Errormap N = {N_val}, F = {F_val}, k = {k_val}")
+    plt.tight_layout()
+    out_file = out_dir / f"errorMap_{metric}_N{N_val}_F{F_val}_k{k_val}.png"
+
+    plt.savefig(out_file)
+
+def heatmap(N_val,F_val,k_val): #0 has to be part of probability dataset, TODO change it to number of occurencies of first element
+    sns.set_theme(style="white")
+    #flights = sns.load_dataset("flights")
+    #print(flights.head())
+    df = init_db_connection()
+    df_filtered = df[(df['N'] == N_val) & (df['F'] == F_val) & (df['k'] == k_val)]
+    generateGraphics(df_filtered,'s_max',N_val,F_val,k_val)
+    generateGraphics(df_filtered,'s_mean',N_val,F_val,k_val)
+    
+def plot2DCuts(N_val,F_val,k_val):
+    plot_sw_phase_transition(N_val = N_val,F_val=F_val, k_val=k_val, target_p_values=[0.0, 0.001, 0.01, 0.1, 1.0],name="default")
+    plot_sw_phase_transition(N_val = N_val,F_val=F_val, k_val=k_val, target_p_values=[0.0, 0.01, 0.02, 0.03, 0.04,0.05,0.06,0.07,0.08,0.09],name="0.0")
+    plot_sw_phase_transition(N_val = N_val,F_val=F_val, k_val=k_val, target_p_values=[0.1, 0.11, 0.12, 0.13, 0.14,0.15,0.16,0.17,0.18,0.19],name="0.1")
+    plot_sw_phase_transition(N_val = N_val,F_val=F_val, k_val=k_val, target_p_values=[0.2, 0.21, 0.22, 0.23, 0.24,0.25,0.26,0.27,0.28,0.29],name="0.2")
+    plot_sw_phase_transition(N_val = N_val,F_val=F_val, k_val=k_val, target_p_values=[0.3, 0.31, 0.32, 0.33, 0.34,0.35,0.36,0.37,0.38,0.39],name="0.3")
+    plot_sw_phase_transition(N_val = N_val,F_val=F_val, k_val=k_val, target_p_values=[0.4, 0.41, 0.42, 0.43, 0.44,0.45,0.46,0.47,0.48,0.49],name="0.4")
+    plot_sw_phase_transition(N_val = N_val,F_val=F_val, k_val=k_val, target_p_values=[0.5, 0.51, 0.52, 0.53, 0.54,0.55,0.56,0.57,0.58,0.59],name="0.5")
+    plot_sw_phase_transition(N_val = N_val,F_val=F_val, k_val=k_val, target_p_values=[0.6, 0.61, 0.62, 0.63, 0.64,0.65,0.66,0.67,0.68,0.69],name="0.6")
+    plot_sw_phase_transition(N_val = N_val,F_val=F_val, k_val=k_val, target_p_values=[0.7, 0.71, 0.72, 0.73, 0.74,0.75,0.76,0.77,0.78,0.79],name="0.7")
+    plot_sw_phase_transition(N_val = N_val,F_val=F_val, k_val=k_val, target_p_values=[0.8, 0.81, 0.82, 0.83, 0.84,0.85,0.86,0.87,0.88,0.89],name="0.8")
+    plot_sw_phase_transition(N_val = N_val,F_val=F_val, k_val=k_val, target_p_values=[0.9, 0.91, 0.92, 0.93, 0.94,0.95,0.96,0.97,0.98,0.99,1],name="0.9")
+    plot_sw_phase_transition(N_val = N_val,F_val=F_val, k_val=k_val, target_p_values=[0.0, 0.01, 0.02, 0.03, 0.04,0.05,0.06,0.07,0.08,0.09,
+                                                                                      0.1, 0.11, 0.12, 0.13, 0.14,0.15,0.16,0.17,0.18,0.19,
+                                                                                      0.2, 0.21, 0.22, 0.23, 0.24,0.25,0.26,0.27,0.28,0.29,
+                                                                                      0.3, 0.31, 0.32, 0.33, 0.34,0.35,0.36,0.37,0.38,0.39,
+                                                                                      0.4, 0.41, 0.42, 0.43, 0.44,0.45,0.46,0.47,0.48,0.49,
+                                                                                      0.5, 0.51, 0.52, 0.53, 0.54,0.55,0.56,0.57,0.58,0.59,
+                                                                                      0.6, 0.61, 0.62, 0.63, 0.64,0.65,0.66,0.67,0.68,0.69,
+                                                                                      0.7, 0.71, 0.72, 0.73, 0.74,0.75,0.76,0.77,0.78,0.79,
+                                                                                      0.8, 0.81, 0.82, 0.83, 0.84,0.85,0.86,0.87,0.88,0.89,
+                                                                                      0.9,0.91, 0.92, 0.93, 0.94,0.95,0.96,0.97,0.98,0.99,1],name="all")
+    
 
 if __name__ == "__main__":
-    recreate_watts_strogatz_plot()
-    plot_sw_phase_transition(F_val=3, k_val=4, target_p_values=[0.0, 0.001, 0.01, 0.1, 1.0])
+    #recreate_watts_strogatz_plot()
+    plot2DCuts(400,3,4)
+    heatmap(400,3,4)
