@@ -117,9 +117,9 @@ sw_experiment:
 ####################################################################################################################
 as_experiment:
   master_seed: 42
-  M_realizations: 5
-  max_mcs: 10000000
-  transient_mcs: 1000000 # can be cut down to 5k ??? look at mobility plots
+  M_realizations: 10
+  max_mcs: 100000
+  transient_mcs: 5000 # can be cut down to 5k ??? look at mobility plots
   sweep:
     L: [20, 30, 40]
     F: [10]
@@ -147,7 +147,7 @@ as_experiment:
       ]
 
     # h = Fraction of empty sites
-    h: [0.05, 0.5] #[0.05, 0.5]
+    h: [0.05, 0.3, 0.5] #[0.05, 0.5]
 
     # T = Tolerance
     T: [0.3, 0.7] # 0.5,
@@ -180,7 +180,7 @@ schelling_plotter:
   plot2_lattice_scaling:
     h: 0.5
     T: 0.3
-    L_values: [10, 20, 30, 40]
+    L_values: [20, 30, 40]
 
   plot3_tolerance_scaling:
     h: 0.5

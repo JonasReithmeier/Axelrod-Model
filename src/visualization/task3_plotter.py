@@ -13,14 +13,13 @@ def load_config(config_path="config.yaml"):
     with open(path, "r") as f:
         return yaml.safe_load(f)
 
-def get_style_generator():
-    """Returns dynamic generators for markers and colors to prevent KeyErrors on new params."""
-    markers = itertools.cycle(['o', 's', '^', 'D', 'v', '>', '<', 'p', 'h', '*'])
+def get_color_generator():
+    """Returns a dynamic generator for colors."""
     colors = itertools.cycle([
         'gray', 'coral', 'forestgreen', 'mediumpurple', 'orchid', 
         'palevioletred', 'dodgerblue', 'darkorange', 'teal'
     ])
-    return markers, colors
+    return colors
 
 def format_list_for_fname(lst):
     """Helper to cleanly format lists into filename strings (e.g., [0.3, 0.7] -> '0.3-0.7')"""
@@ -90,7 +89,7 @@ def main():
     
     if not df_p1.empty:
         plt.figure(figsize=(7, 5))
-        markers_p1, colors_p1 = get_style_generator()
+        colors_p1 = get_color_generator()
         plotted_lines = 0
         
         for w in widths_p1:
@@ -100,18 +99,24 @@ def main():
                     print(f"     [Warning] No data for L={w}, T={t_val}")
                     continue
                 
-                grouped = d.groupby('q_N')['s_max'].mean().reset_index().sort_values('q_N')
-                plt.plot(grouped['q_N'], grouped['s_max'], 
-                         marker=next(markers_p1), linestyle='--', linewidth=1,
-                         color=next(colors_p1), markerfacecolor='none', markeredgewidth=1.2,
-                         label=f'L={w} T={t_val}')
+                # Calculate mean and standard deviation
+                grouped = d.groupby('q_N')['s_max'].agg(['mean', 'std']).reset_index().sort_values('q_N')
+                grouped['std'] = grouped['std'].fillna(0)  # Handle cases with single measurements
+                
+                plt.errorbar(
+                    grouped['q_N'], grouped['mean'], yerr=grouped['std'],
+                    fmt='o-', linestyle='--', linewidth=1,
+                    color=next(colors_p1), markerfacecolor='none', markeredgewidth=1.2,
+                    capsize=3, elinewidth=1, capthick=1,
+                    label=f'L={w} T={t_val}'
+                )
                 plotted_lines += 1
 
         if plotted_lines > 0:
             plt.xlabel('q/N')
             plt.ylabel(r'$\langle S_{max} \rangle / N$')
             plt.title(f'Phase Transition on Schelling-Axelrod Model\n($F={target_F}$, $h={h1}$)', fontsize=15, pad=15)
-            plt.xlim(0, max(6, df_p1['q_N'].max() * 1.1))  # Dynamic x-lim based on data
+            plt.xlim(0, 6)  # Dynamic x-lim based on data  max(6, df_p1['q_N'].max() * 1.1)
             plt.ylim(0, 1.05)
             plt.legend(loc='best', framealpha=1.0, edgecolor='black')
             plt.tight_layout()
@@ -138,7 +143,7 @@ def main():
     
     if not df_p2.empty:
         plt.figure(figsize=(7, 5))
-        markers_p2, colors_p2 = get_style_generator()
+        colors_p2 = get_color_generator()
         plotted_lines = 0
 
         for w in widths_p2:
@@ -147,18 +152,24 @@ def main():
                 print(f"     [Warning] No data for L={w}")
                 continue
             
-            grouped = d.groupby('q_N')['s_max'].mean().reset_index().sort_values('q_N')
-            plt.plot(grouped['q_N'], grouped['s_max'], 
-                     marker=next(markers_p2), linestyle='--', linewidth=1,
-                     color=next(colors_p2), markerfacecolor='none', markeredgewidth=1.2,
-                     label=f'L={w}')
+            # Calculate mean and standard deviation
+            grouped = d.groupby('q_N')['s_max'].agg(['mean', 'std']).reset_index().sort_values('q_N')
+            grouped['std'] = grouped['std'].fillna(0)
+
+            plt.errorbar(
+                grouped['q_N'], grouped['mean'], yerr=grouped['std'],
+                fmt='o-', linestyle='--', linewidth=1,
+                color=next(colors_p2), markerfacecolor='none', markeredgewidth=1.2,
+                capsize=3, elinewidth=1, capthick=1,
+                label=f'L={w}'
+            )
             plotted_lines += 1
 
         if plotted_lines > 0:
             plt.xlabel('q/N')
             plt.ylabel(r'$\langle S_{max} \rangle / N$')
             plt.title(f'Phase Transition on Schelling-Axelrod Model\n($F={target_F}$, $h={h2}$, $T={T2}$)', fontsize=15, pad=15)
-            plt.xlim(0, max(6, df_p2['q_N'].max() * 1.1))
+            plt.xlim(0, 6)  #max(6, df_p2['q_N'].max() * 1.1)
             plt.ylim(0, 1.05)
             plt.legend(loc='best', framealpha=1.0, edgecolor='black')
             plt.tight_layout()
@@ -185,7 +196,7 @@ def main():
     
     if not df_p3.empty:
         plt.figure(figsize=(7, 5))
-        markers_p3, colors_p3 = get_style_generator()
+        colors_p3 = get_color_generator()
         plotted_lines = 0
 
         for t_val in Ts_p3:
@@ -194,18 +205,24 @@ def main():
                 print(f"     [Warning] No data for T={t_val}")
                 continue
             
-            grouped = d.groupby('q_N')['s_max'].mean().reset_index().sort_values('q_N')
-            plt.plot(grouped['q_N'], grouped['s_max'], 
-                     marker=next(markers_p3), linestyle='--', linewidth=1,
-                     color=next(colors_p3), markerfacecolor='none', markeredgewidth=1.2,
-                     label=f'T={t_val}')
+            # Calculate mean and standard deviation
+            grouped = d.groupby('q_N')['s_max'].agg(['mean', 'std']).reset_index().sort_values('q_N')
+            grouped['std'] = grouped['std'].fillna(0)
+
+            plt.errorbar(
+                grouped['q_N'], grouped['mean'], yerr=grouped['std'],
+                fmt='o-', linestyle='--', linewidth=1,
+                color=next(colors_p3), markerfacecolor='none', markeredgewidth=1.2,
+                capsize=3, elinewidth=1, capthick=1,
+                label=f'T={t_val}'
+            )
             plotted_lines += 1
 
         if plotted_lines > 0:
             plt.xlabel('q/N')
             plt.ylabel(r'$\langle S_{max} \rangle / N$')
             plt.title(f'Phase Transition on Schelling-Axelrod Model\n($F={target_F}$, $h={h3}$, $L={L3}$)', fontsize=15, pad=15)
-            plt.xlim(0, max(6, df_p3['q_N'].max() * 1.1))
+            plt.xlim(0, 6)  #max(6, df_p3['q_N'].max() * 1.1)
             plt.ylim(0, 1.05)
             plt.legend(loc='best', framealpha=1.0, edgecolor='black')
             plt.tight_layout()
