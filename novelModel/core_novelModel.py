@@ -238,36 +238,37 @@ def step_dev_sw(grid, dev, padded_edges, adj_matrix, N, F, weight_mode, alpha,
             return False, True, False
 
     # --- THIRD: Interaction failed OR diff_count == 0 -> Trigger mobility check ---
-    avg_dis = 0.0
-    for k in range(n_neighbors):
-        avg_dis += dis_buf[k]
-    avg_dis /= n_neighbors
+    if diff_count > 0:
+        avg_dis = 0.0
+        for k in range(n_neighbors):
+            avg_dis += dis_buf[k]
+        avg_dis /= n_neighbors
 
-    if avg_dis > dis_threshold:
-        worst_k = 0
-        worst_dis = dis_buf[0]
-        for k in range(1, n_neighbors):
-            if dis_buf[k] > worst_dis:
-                worst_dis = dis_buf[k]
-                worst_k = k
-        worst_j = neighbor_buf[worst_k]
+        if avg_dis > dis_threshold:
+            worst_k = 0
+            worst_dis = dis_buf[0]
+            for k in range(1, n_neighbors):
+                if dis_buf[k] > worst_dis:
+                    worst_dis = dis_buf[k]
+                    worst_k = k
+            worst_j = neighbor_buf[worst_k]
 
-        # Find new target connection
-        new_j = -1
-        for _ in range(N):
-            candidate = int(rng.random() * N)
-            if candidate == agent_i or has_edge(adj_matrix, agent_i, candidate, N):
-                continue
-            new_j = candidate
-            break
+            # Find new target connection
+            new_j = -1
+            for _ in range(N):
+                candidate = int(rng.random() * N)
+                if candidate == agent_i or has_edge(adj_matrix, agent_i, candidate, N):
+                    continue
+                new_j = candidate
+                break
 
-        if new_j != -1:
-            if is_node_full(padded_edges, new_j, max_degree):
-                return False, False, True  # Blocked by capacity limit
+            if new_j != -1:
+                if is_node_full(padded_edges, new_j, max_degree):
+                    return False, False, True  # Blocked by capacity limit
 
-            remove_edge(padded_edges, adj_matrix, agent_i, worst_j, N, max_degree)
-            add_edge(padded_edges, adj_matrix, agent_i, new_j, N, max_degree)
-            return True, False, False
+                remove_edge(padded_edges, adj_matrix, agent_i, worst_j, N, max_degree)
+                add_edge(padded_edges, adj_matrix, agent_i, new_j, N, max_degree)
+                return True, False, False
 
     # Default fallback (e.g., interaction failed/skipped and average dissatisfaction too low)
     return False, False, False
