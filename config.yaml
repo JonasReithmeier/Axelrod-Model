@@ -118,39 +118,51 @@ sw_experiment:
 as_experiment:
   master_seed: 42
   M_realizations: 10
-  max_mcs: 100000
+  max_mcs: 1000000
   transient_mcs: 5000 # can be cut down to 5k ??? look at mobility plots
   sweep:
-    L: [20, 30, 40]
+    L: [30, 40]
     F: [10]
 
-    # Carefully curated to map q/N from 0.05 to 5.0 across all widths
     q:
       [
         10,
         20,
-        40,
         80,
         120,
-        160,
+        180,
         200,
+        270,
         300,
+        360,
         400,
-        600,
+        500,
+        540,
+        640,
+        720,
         800,
+        900,
+        1080,
         1200,
+        1350,
+        1440,
         1600,
+        1800,
+        2250,
         2400,
-        3200,
+        2880,
+        3000,
+        3500,
+        4000,
         4800,
-        8000,
+        5000,
       ]
 
     # h = Fraction of empty sites
-    h: [0.05, 0.3, 0.5] #[0.05, 0.5]
+    h: [0.05, 0.3, 0.5, 0.7] #[0.05, 0.5]
 
     # T = Tolerance
-    T: [0.3, 0.7] # 0.5,
+    T: [0.3, 0.5, 0.7, 1.0] # 0.5,
 ################################################################################
 as_mobility_experiment:
   master_seed: 42
@@ -174,15 +186,15 @@ schelling_plotter:
 
   plot1_low_density:
     h: 0.05
-    L_values: [20, 30, 40]
-    T_values: [0.3, 0.7]
+    L_values: [30, 40]
+    T_values: [0.3, 0.7, 1.0]
 
   plot2_lattice_scaling:
     h: 0.5
     T: 0.3
-    L_values: [20, 30, 40]
+    L_values: [30, 40]
 
   plot3_tolerance_scaling:
     h: 0.5
     L: 40
-    T_values: [0.3, 0.7]
+    T_values: [0.3, 0.7, 1.0]
