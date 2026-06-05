@@ -54,7 +54,7 @@ def main():
     df['q_N'] = df['q'] / df['N']
 
     # 3. Setup output directory
-    out_dir = Path(cfg.get('output_dir', "plots/task3/steps_to_const_over_q"))
+    out_dir = Path("plots/task3/steps_to_const_over_q")
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # Global variables from config
