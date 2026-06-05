@@ -123,7 +123,7 @@ def main():
             plt.xlabel('q/N')
             plt.ylabel(r'$\langle S_{max} \rangle / N$')
             plt.title(f'Phase Transition on Schelling-Axelrod Model\n($F={target_F}$, $h={h1}$)', fontsize=15, pad=15)
-            plt.xlim(0, 0.1)
+            plt.xlim(0, 0.08)
             plt.ylim(0, 1.05)
             plt.legend(loc='best', framealpha=1.0, edgecolor='black')
             plt.tight_layout()
