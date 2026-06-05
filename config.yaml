@@ -214,7 +214,7 @@ as_mobility_experiment:
   db_path: data/schelling/mobility_trajectories.parquet
   plot_dir: plots/schelling/mobility
   sweep:
-    L: [40]
+    L: [30]
     F: [10]
     q: [10, 100, 160, 400, 1000, 2400, 3200, 8000]
     h: [0.05, 0.5]
