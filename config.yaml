@@ -221,7 +221,7 @@ as_mobility_experiment:
     T: [0.3, 0.7]
 
 ###################################################################################
-schelling_plotter:
+sMax_schelling_plotter:
   input_file: "data/schelling/schelling_master_results.parquet"
   output_dir: "plots/task3/s_max_over_q"
   target_F: 10
@@ -234,7 +234,7 @@ schelling_plotter:
   plot2_lattice_scaling:
     h: 0.5
     T: 0.3
-    L_values: [30, 40]
+    L_values: [10, 30, 40, 50]
 
   plot3_tolerance_scaling:
     h: 0.5
@@ -269,14 +269,13 @@ schelling_plotter:
     T_values: [0.3, 0.5, 0.7, 1.0]
     h_values: [0.05, 0.3, 0.5, 0.7]
 
-
 ###########################################
 # converge time plotter
 schelling_plotter:
   input_file: "data/schelling/schelling_master_results.parquet"
   output_dir: "plots/task3/convg_time"
   target_F: 10
-  
+
   # New subentry for dynamic roll parameters
   plot_dynamic:
     L_values: [30]

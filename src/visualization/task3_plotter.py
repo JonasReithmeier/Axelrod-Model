@@ -33,10 +33,10 @@ def format_list_for_fname_inverted(lst):
 def main():
     # 0. Load Configuration
     full_config = load_config()
-    if 'schelling_plotter' not in full_config:
-        print("Error: 'schelling_plotter' entry missing from config.yaml")
+    if 'sMax_schelling_plotter' not in full_config:
+        print("Error: 'sMax_schelling_plotter' entry missing from config.yaml")
         return
-    cfg = full_config['schelling_plotter']
+    cfg = full_config['sMax_schelling_plotter']
 
     db_path = Path(cfg.get('input_file', "data/schelling/schelling_master_results.parquet"))
     if not db_path.exists():
@@ -123,7 +123,7 @@ def main():
             plt.xlabel('q/N')
             plt.ylabel(r'$\langle S_{max} \rangle / N$')
             plt.title(f'Phase Transition on Schelling-Axelrod Model\n($F={target_F}$, $h={h1}$)', fontsize=15, pad=15)
-            plt.xlim(0, 0.08)
+            plt.xlim(0, 6)
             plt.ylim(0, 1.05)
             plt.legend(loc='best', framealpha=1.0, edgecolor='black')
             plt.tight_layout()
@@ -178,7 +178,7 @@ def main():
             
             vis_T2 = round(1.0 - T2, 4)
             plt.title(f'Phase Transition on Schelling-Axelrod Model\n($F={target_F}$, $h={h2}$, $T={vis_T2}$)', fontsize=15, pad=15)
-            plt.xlim(0, 6)  
+            plt.xlim(0, 2)  
             plt.ylim(0, 1.05)
             plt.legend(loc='best', framealpha=1.0, edgecolor='black')
             plt.tight_layout()
