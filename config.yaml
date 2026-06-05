@@ -227,7 +227,7 @@ schelling_plotter:
   target_F: 10
 
   plot1_low_density:
-    h: 0.05
+    h: 0.05 # [0.05, 0.3, 0.5, 0.7]
     L_values: [30, 40]
     T_values: [0.3, 0.5, 0.7, 1.0] #
 
@@ -260,5 +260,11 @@ schelling_plotter:
   # PLOT 9: Line plot varying both T and h simultaneously (Fixed L)
   plot9_tolerance_density_scaling:
     L: 30
+    T_values: [0.3, 0.5, 0.7, 1.0]
+    h_values: [0.05, 0.3, 0.5, 0.7]
+
+  # PLOT 10: Combined Scaling of L, T, and h
+  plot10_combined_scaling:
+    L_values: [30, 40]
     T_values: [0.3, 0.5, 0.7, 1.0]
     h_values: [0.05, 0.3, 0.5, 0.7]

@@ -49,9 +49,10 @@ def main():
     df = df[df['is_constant'] == True] # only terminated data gets into plots
     print(f"Total rows loaded: {len(df)}")
     
-    # 2. Calculate scaled q (X-axis)
+    # 2. Calculate scaled q (X-axis) and normalized steps (Y-axis)
     df['N'] = df['L'] * df['L']
     df['q_N'] = df['q'] / df['N']
+    df['steps_to_const_N'] = df['steps_to_const'] # / df['N']  no normalization, MCS is already invariant of N
 
     # 3. Setup output directory
     out_dir = Path("plots/task3/steps_to_const_over_q")
@@ -105,13 +106,13 @@ def main():
                     print(f"     [Warning] No data for L={w}, T={t_val}")
                     continue
                 
-                # Calculate mean and standard deviation
-                grouped = d.groupby('q_N')['steps_to_const'].agg(['mean', 'std']).reset_index().sort_values('q_N')
-                grouped['std'] = grouped['std'].fillna(0)
+                # Calculate mean and standard error of the mean (sem)
+                grouped = d.groupby('q_N')['steps_to_const_N'].agg(['mean', 'sem']).reset_index().sort_values('q_N')
+                grouped['sem'] = grouped['sem'].fillna(0)  
                 
                 vis_T = round(1.0 - t_val, 4)
                 plt.errorbar(
-                    grouped['q_N'], grouped['mean'], yerr=grouped['std'],
+                    grouped['q_N'], grouped['mean'], yerr=grouped['sem'],
                     fmt='o-', linestyle='--', linewidth=1,
                     color=next(colors_p1), markerfacecolor='none', markeredgewidth=1.2,
                     capsize=3, elinewidth=1, capthick=1,
@@ -121,14 +122,12 @@ def main():
 
         if plotted_lines > 0:
             plt.xlabel('q/N')
-            plt.ylabel(r'$\langle S_{max} \rangle / N$')
-            plt.title(f'Phase Transition on Schelling-Axelrod Model\n($F={target_F}$, $h={h1}$)', fontsize=15, pad=15)
-            plt.xlim(0, 0.08)
-            plt.ylim(0, 1.05)
+            plt.ylabel(r'$\langle \text{MCS to Convergence} \rangle$')
+            plt.title(f'Convergence Time on Schelling-Axelrod Model\n($F={target_F}$, $h={h1}$)', fontsize=15, pad=15)
             plt.legend(loc='best', framealpha=1.0, edgecolor='black')
             plt.tight_layout()
             
-            fname1 = f"fig1_low_density_h{h1}_F{target_F}_L{format_list_for_fname(widths_p1)}_T{format_list_for_fname_inverted(Ts_p1)}.png"
+            fname1 = f"steps_fig1_low_density_h{h1}_F{target_F}_L{format_list_for_fname(widths_p1)}_T{format_list_for_fname_inverted(Ts_p1)}.png"
             plt.savefig(out_dir / fname1, dpi=300, bbox_inches='tight')
             print(f"  -> Saved: {fname1}")
         else:
@@ -159,12 +158,12 @@ def main():
                 print(f"     [Warning] No data for L={w}")
                 continue
             
-            # Calculate mean and standard deviation
-            grouped = d.groupby('q_N')['steps_to_const'].agg(['mean', 'std']).reset_index().sort_values('q_N')
-            grouped['std'] = grouped['std'].fillna(0)
+            # Calculate mean and standard error of the mean (sem)
+            grouped = d.groupby('q_N')['steps_to_const_N'].agg(['mean', 'sem']).reset_index().sort_values('q_N')
+            grouped['sem'] = grouped['sem'].fillna(0)
 
             plt.errorbar(
-                grouped['q_N'], grouped['mean'], yerr=grouped['std'],
+                grouped['q_N'], grouped['mean'], yerr=grouped['sem'],
                 fmt='o-', linestyle='--', linewidth=1,
                 color=next(colors_p2), markerfacecolor='none', markeredgewidth=1.2,
                 capsize=3, elinewidth=1, capthick=1,
@@ -174,16 +173,14 @@ def main():
 
         if plotted_lines > 0:
             plt.xlabel('q/N')
-            plt.ylabel(r'$\langle S_{max} \rangle / N$')
+            plt.ylabel(r'$\langle \text{MCS to Convergence} \rangle$')
             
             vis_T2 = round(1.0 - T2, 4)
-            plt.title(f'Phase Transition on Schelling-Axelrod Model\n($F={target_F}$, $h={h2}$, $T={vis_T2}$)', fontsize=15, pad=15)
-            plt.xlim(0, 6)  
-            plt.ylim(0, 1.05)
+            plt.title(f'Convergence Time on Schelling-Axelrod Model\n($F={target_F}$, $h={h2}$, $T={vis_T2}$)', fontsize=15, pad=15)
             plt.legend(loc='best', framealpha=1.0, edgecolor='black')
             plt.tight_layout()
             
-            fname2 = f"fig2a_lattice_scaling_h{h2}_F{target_F}_T{vis_T2}_L{format_list_for_fname(widths_p2)}.png"
+            fname2 = f"steps_fig2a_lattice_scaling_h{h2}_F{target_F}_T{vis_T2}_L{format_list_for_fname(widths_p2)}.png"
             plt.savefig(out_dir / fname2, dpi=300, bbox_inches='tight')
             print(f"  -> Saved: {fname2}")
         else:
@@ -214,13 +211,13 @@ def main():
                 print(f"     [Warning] No data for T={t_val}")
                 continue
             
-            # Calculate mean and standard deviation
-            grouped = d.groupby('q_N')['steps_to_const'].agg(['mean', 'std']).reset_index().sort_values('q_N')
-            grouped['std'] = grouped['std'].fillna(0)
+            # Calculate mean and standard error of the mean (sem)
+            grouped = d.groupby('q_N')['steps_to_const_N'].agg(['mean', 'sem']).reset_index().sort_values('q_N')
+            grouped['sem'] = grouped['sem'].fillna(0)
 
             vis_T = round(1.0 - t_val, 4)
             plt.errorbar(
-                grouped['q_N'], grouped['mean'], yerr=grouped['std'],
+                grouped['q_N'], grouped['mean'], yerr=grouped['sem'],
                 fmt='o-', linestyle='--', linewidth=1,
                 color=next(colors_p3), markerfacecolor='none', markeredgewidth=1.2,
                 capsize=3, elinewidth=1, capthick=1,
@@ -230,14 +227,12 @@ def main():
 
         if plotted_lines > 0:
             plt.xlabel('q/N')
-            plt.ylabel(r'$\langle S_{max} \rangle / N$')
-            plt.title(f'Phase Transition on Schelling-Axelrod Model\n($F={target_F}$, $h={h3}$, $L={L3}$)', fontsize=15, pad=15)
-            plt.xlim(0, 6)  
-            plt.ylim(0, 1.05)
+            plt.ylabel(r'$\langle \text{MCS to Convergence} \rangle$')
+            plt.title(f'Convergence Time on Schelling-Axelrod Model\n($F={target_F}$, $h={h3}$, $L={L3}$)', fontsize=15, pad=15)
             plt.legend(loc='best', framealpha=1.0, edgecolor='black')
             plt.tight_layout()
             
-            fname3 = f"fig2b_tolerance_scaling_h{h3}_F{target_F}_L{L3}_T{format_list_for_fname_inverted(Ts_p3)}.png"
+            fname3 = f"steps_fig2b_tolerance_scaling_h{h3}_F{target_F}_L{L3}_T{format_list_for_fname_inverted(Ts_p3)}.png"
             plt.savefig(out_dir / fname3, dpi=300, bbox_inches='tight')
             print(f"  -> Saved: {fname3}")
         else:
@@ -245,7 +240,7 @@ def main():
         plt.close()
 
     # =========================================================
-    # PLOT 4: Discrete Grid Heatmap of steps_to_const over q/N and T (Fixed h and L)
+    # PLOT 4: Discrete Grid Heatmap of Steps over q/N and T (Fixed h and L)
     # =========================================================
     if 'plot4_heatmap_q_T' in cfg:
         p4_cfg = cfg['plot4_heatmap_q_T']
@@ -258,10 +253,10 @@ def main():
         print(f"  -> Rows matching h={h4}, L={L4}: {len(df_p4)}")
 
         if not df_p4.empty:
-            grouped_p4 = df_p4.groupby(['T', 'q_N'])['steps_to_const'].mean().reset_index()
+            grouped_p4 = df_p4.groupby(['T', 'q_N'])['steps_to_const_N'].mean().reset_index()
             grouped_p4['T_vis'] = 1.0 - grouped_p4['T']
             
-            pivot_p4 = grouped_p4.pivot(index='T_vis', columns='q_N', values='steps_to_const')
+            pivot_p4 = grouped_p4.pivot(index='T_vis', columns='q_N', values='steps_to_const_N')
             pivot_p4 = pivot_p4.sort_index(ascending=True).sort_index(axis=1, ascending=True)
 
             plt.figure(figsize=(8, 6))
@@ -271,22 +266,21 @@ def main():
             )
 
             cbar = plt.colorbar(mesh)
-            cbar.set_label(r'$\langle S_{max} \rangle / N$', rotation=270, labelpad=20)
+            cbar.set_label(r'$\langle \text{MCS to Convergence} \rangle$', rotation=270, labelpad=20)
             
             plt.xlabel('q/N')
             plt.ylabel('T (Tolerance)')
-            plt.title(f'Phase Diagram (Grid Heatmap)\n($F={target_F}$, $h={h4}$, $L={L4}$)', fontsize=15, pad=15)
-            plt.xlim(0, 6)
+            plt.title(f'Convergence Time (Grid Heatmap)\n($F={target_F}$, $h={h4}$, $L={L4}$)', fontsize=15, pad=15)
             plt.grid(False)
             plt.tight_layout()
 
-            fname4 = f"fig3a_grid_heatmap_q_T_h{h4}_F{target_F}_L{L4}.png"
+            fname4 = f"steps_fig3a_grid_heatmap_q_T_h{h4}_F{target_F}_L{L4}.png"
             plt.savefig(out_dir / fname4, dpi=300, bbox_inches='tight')
             print(f"  -> Saved: {fname4}")
             plt.close()
 
     # =========================================================
-    # PLOT 5: Discrete Grid Heatmap of steps_to_const over q/N and h (Fixed T and L)
+    # PLOT 5: Discrete Grid Heatmap of Steps over q/N and h (Fixed T and L)
     # =========================================================
     if 'plot5_heatmap_q_h' in cfg:
         p5_cfg = cfg['plot5_heatmap_q_h']
@@ -300,9 +294,9 @@ def main():
         print(f"  -> Rows matching T={T5}, L={L5}: {len(df_p5)}")
 
         if not df_p5.empty:
-            grouped_p5 = df_p5.groupby(['h', 'q_N'])['steps_to_const'].mean().reset_index()
+            grouped_p5 = df_p5.groupby(['h', 'q_N'])['steps_to_const_N'].mean().reset_index()
             
-            pivot_p5 = grouped_p5.pivot(index='h', columns='q_N', values='steps_to_const')
+            pivot_p5 = grouped_p5.pivot(index='h', columns='q_N', values='steps_to_const_N')
             pivot_p5 = pivot_p5.sort_index(ascending=True).sort_index(axis=1, ascending=True)
 
             plt.figure(figsize=(8, 6))
@@ -312,22 +306,21 @@ def main():
             )
 
             cbar = plt.colorbar(mesh)
-            cbar.set_label(r'$\langle S_{max} \rangle / N$', rotation=270, labelpad=20)
+            cbar.set_label(r'$\langle \text{MCS to Convergence} \rangle$', rotation=270, labelpad=20)
             
             plt.xlabel('q/N')
             plt.ylabel('h (Empty Density)')
-            plt.title(f'Phase Diagram (Grid Heatmap)\n($F={target_F}$, $T={vis_T5}$, $L={L5}$)', fontsize=15, pad=15)
-            plt.xlim(0, 6)
+            plt.title(f'Convergence Time (Grid Heatmap)\n($F={target_F}$, $T={vis_T5}$, $L={L5}$)', fontsize=15, pad=15)
             plt.grid(False)
             plt.tight_layout()
 
-            fname5 = f"fig3b_grid_heatmap_q_h_T{vis_T5}_F{target_F}_L{L5}.png"
+            fname5 = f"steps_fig3b_grid_heatmap_q_h_T{vis_T5}_F{target_F}_L{L5}.png"
             plt.savefig(out_dir / fname5, dpi=300, bbox_inches='tight')
             print(f"  -> Saved: {fname5}")
             plt.close()
 
     # =========================================================
-    # PLOT 6: Interpolated Heatmap of steps_to_const over q/N and T (Fixed h and L)
+    # PLOT 6: Interpolated Heatmap of Steps over q/N and T (Fixed h and L)
     # =========================================================
     if 'plot4_heatmap_q_T' in cfg:
         p6_cfg = cfg['plot4_heatmap_q_T']
@@ -340,12 +333,12 @@ def main():
         print(f"  -> Rows matching h={h6}, L={L6}: {len(df_p6)}")
 
         if not df_p6.empty:
-            grouped_p6 = df_p6.groupby(['q_N', 'T'])['steps_to_const'].mean().reset_index()
+            grouped_p6 = df_p6.groupby(['q_N', 'T'])['steps_to_const_N'].mean().reset_index()
             grouped_p6['T_vis'] = 1.0 - grouped_p6['T']
 
             plt.figure(figsize=(8, 6))
             contour = plt.tricontourf(
-                grouped_p6['q_N'], grouped_p6['T_vis'], grouped_p6['steps_to_const'], 
+                grouped_p6['q_N'], grouped_p6['T_vis'], grouped_p6['steps_to_const_N'], 
                 levels=15, cmap='viridis'
             )
             plt.scatter(
@@ -354,22 +347,21 @@ def main():
             )
 
             cbar = plt.colorbar(contour)
-            cbar.set_label(r'$\langle S_{max} \rangle / N$', rotation=270, labelpad=20)
+            cbar.set_label(r'$\langle \text{MCS to Convergence} \rangle$', rotation=270, labelpad=20)
             
             plt.xlabel('q/N')
             plt.ylabel('T (Tolerance)')
-            plt.title(f'Phase Diagram (Interpolated Heatmap)\n($F={target_F}$, $h={h6}$, $L={L6}$)', fontsize=15, pad=15)
-            plt.xlim(0, 6)
+            plt.title(f'Convergence Time (Interpolated Heatmap)\n($F={target_F}$, $h={h6}$, $L={L6}$)', fontsize=15, pad=15)
             plt.grid(True, alpha=0.2)
             plt.tight_layout()
 
-            fname6 = f"fig4a_interpolated_heatmap_q_T_h{h6}_F{target_F}_L{L6}.png"
+            fname6 = f"steps_fig4a_interpolated_heatmap_q_T_h{h6}_F{target_F}_L{L6}.png"
             plt.savefig(out_dir / fname6, dpi=300, bbox_inches='tight')
             print(f"  -> Saved: {fname6}")
             plt.close()
 
     # =========================================================
-    # PLOT 7: Interpolated Heatmap of steps_to_const over q/N and h (Fixed T and L)
+    # PLOT 7: Interpolated Heatmap of Steps over q/N and h (Fixed T and L)
     # =========================================================
     if 'plot5_heatmap_q_h' in cfg:
         p7_cfg = cfg['plot5_heatmap_q_h']
@@ -383,11 +375,11 @@ def main():
         print(f"  -> Rows matching T={T7}, L={L7}: {len(df_p7)}")
 
         if not df_p7.empty:
-            grouped_p7 = df_p7.groupby(['q_N', 'h'])['steps_to_const'].mean().reset_index()
+            grouped_p7 = df_p7.groupby(['q_N', 'h'])['steps_to_const_N'].mean().reset_index()
 
             plt.figure(figsize=(8, 6))
             contour = plt.tricontourf(
-                grouped_p7['q_N'], grouped_p7['h'], grouped_p7['steps_to_const'], 
+                grouped_p7['q_N'], grouped_p7['h'], grouped_p7['steps_to_const_N'], 
                 levels=15, cmap='viridis'
             )
             plt.scatter(
@@ -396,16 +388,15 @@ def main():
             )
 
             cbar = plt.colorbar(contour)
-            cbar.set_label(r'$\langle S_{max} \rangle / N$', rotation=270, labelpad=20)
+            cbar.set_label(r'$\langle \text{MCS to Convergence} \rangle$', rotation=270, labelpad=20)
             
             plt.xlabel('q/N')
             plt.ylabel('h (Empty Density)')
-            plt.title(f'Phase Diagram (Interpolated Heatmap)\n($F={target_F}$, $T={vis_T7}$, $L={L7}$)', fontsize=15, pad=15)
-            plt.xlim(0, 6)
+            plt.title(f'Convergence Time (Interpolated Heatmap)\n($F={target_F}$, $T={vis_T7}$, $L={L7}$)', fontsize=15, pad=15)
             plt.grid(True, alpha=0.2)
             plt.tight_layout()
 
-            fname7 = f"fig4b_interpolated_heatmap_q_h_T{vis_T7}_F{target_F}_L{L7}.png"
+            fname7 = f"steps_fig4b_interpolated_heatmap_q_h_T{vis_T7}_F{target_F}_L{L7}.png"
             plt.savefig(out_dir / fname7, dpi=300, bbox_inches='tight')
             print(f"  -> Saved: {fname7}")
             plt.close()
@@ -436,12 +427,12 @@ def main():
                     print(f"     [Warning] No data for h={h_val}")
                     continue
 
-                # Calculate mean and standard deviation
-                grouped = d.groupby('q_N')['steps_to_const'].agg(['mean', 'std']).reset_index().sort_values('q_N')
-                grouped['std'] = grouped['std'].fillna(0)
+                # Calculate mean and standard error of the mean (sem)
+                grouped = d.groupby('q_N')['steps_to_const_N'].agg(['mean', 'sem']).reset_index().sort_values('q_N')
+                grouped['sem'] = grouped['sem'].fillna(0)
 
                 plt.errorbar(
-                    grouped['q_N'], grouped['mean'], yerr=grouped['std'],
+                    grouped['q_N'], grouped['mean'], yerr=grouped['sem'],
                     fmt='o-', linestyle='--', linewidth=1,
                     color=next(colors_p8), markerfacecolor='none', markeredgewidth=1.2,
                     capsize=3, elinewidth=1, capthick=1,
@@ -451,14 +442,12 @@ def main():
 
             if plotted_lines > 0:
                 plt.xlabel('q/N')
-                plt.ylabel(r'$\langle S_{max} \rangle / N$')
-                plt.title(f'Phase Transition on Schelling-Axelrod Model\n($F={target_F}$, $T={vis_T8}$, $L={L8}$)', fontsize=15, pad=15)
-                plt.xlim(0, 6)
-                plt.ylim(0, 1.05)
+                plt.ylabel(r'$\langle \text{MCS to Convergence} \rangle$')
+                plt.title(f'Convergence Time on Schelling-Axelrod Model\n($F={target_F}$, $T={vis_T8}$, $L={L8}$)', fontsize=15, pad=15)
                 plt.legend(loc='best', framealpha=1.0, edgecolor='black')
                 plt.tight_layout()
 
-                fname8 = f"fig5_density_scaling_T{vis_T8}_L{L8}_h{format_list_for_fname(hs_p8)}.png"
+                fname8 = f"steps_fig5_density_scaling_T{vis_T8}_L{L8}_h{format_list_for_fname(hs_p8)}.png"
                 plt.savefig(out_dir / fname8, dpi=300, bbox_inches='tight')
                 print(f"  -> Saved: {fname8}")
             else:
@@ -491,13 +480,13 @@ def main():
                     print(f"     [Warning] No data for T={round(1.0 - t_val, 4)}, h={h_val}")
                     continue
 
-                # Calculate mean and standard deviation
-                grouped = d.groupby('q_N')['steps_to_const'].agg(['mean', 'std']).reset_index().sort_values('q_N')
-                grouped['std'] = grouped['std'].fillna(0)
+                # Calculate mean and standard error of the mean (sem)
+                grouped = d.groupby('q_N')['steps_to_const_N'].agg(['mean', 'sem']).reset_index().sort_values('q_N')
+                grouped['sem'] = grouped['sem'].fillna(0)
 
                 vis_T = round(1.0 - t_val, 4)
                 plt.errorbar(
-                    grouped['q_N'], grouped['mean'], yerr=grouped['std'],
+                    grouped['q_N'], grouped['mean'], yerr=grouped['sem'],
                     fmt='o-', linestyle='--', linewidth=1,
                     color=next(colors_p9), markerfacecolor='none', markeredgewidth=1.2,
                     capsize=3, elinewidth=1, capthick=1,
@@ -507,20 +496,97 @@ def main():
 
             if plotted_lines > 0:
                 plt.xlabel('q/N')
-                plt.ylabel(r'$\langle S_{max} \rangle / N$')
-                plt.title(f'Phase Transition on Schelling-Axelrod Model\n($F={target_F}$, $L={L9}$)', fontsize=15, pad=15)
-                plt.xlim(0, 6)
-                plt.ylim(0, 1.05)
-                # Position legend outside or adaptively to manage size with multiple combinations
+                plt.ylabel(r'$\langle \text{MCS to Convergence} \rangle$')
+                plt.title(f'Convergence Time on Schelling-Axelrod Model\n($F={target_F}$, $L={L9}$)', fontsize=15, pad=15)
                 plt.legend(loc='best', framealpha=1.0, edgecolor='black')
                 plt.tight_layout()
 
-                fname9 = f"fig6_tolerance_density_scaling_L{L9}_T{format_list_for_fname_inverted(Ts_p9)}_h{format_list_for_fname(hs_p9)}.png"
+                fname9 = f"steps_fig6_tolerance_density_scaling_L{L9}_T{format_list_for_fname_inverted(Ts_p9)}_h{format_list_for_fname(hs_p9)}.png"
                 plt.savefig(out_dir / fname9, dpi=300, bbox_inches='tight')
                 print(f"  -> Saved: {fname9}")
             else:
                 print("  -> Plot 9 skipped: No lines to plot.")
             plt.close()
+
+    print(f"\nDone! Output directory: {out_dir}/")
+
+
+# =========================================================
+    # PLOT 10: Combined Scaling of L, T, and h with Shaded Highlight Brushing
+    # =========================================================
+    if 'plot10_combined_scaling' in cfg:
+        p10_cfg = cfg['plot10_combined_scaling']
+        widths_p10 = p10_cfg['L_values']
+        Ts_p10 = p10_cfg['T_values']
+        hs_p10 = p10_cfg['h_values']
+
+        print(f"\nGenerating Plot 10 (Combined Scaling L, T, h)...")
+        plt.figure(figsize=(9, 6))
+
+        # Explicit mappings for colors
+        L_colors = {40: 'dodgerblue', 60: 'forestgreen', 80: 'darkorange', 100: 'crimson'}
+        h_brush_colors = {0.1: 'gold', 0.2: 'orchid', 0.3: 'teal', 0.4: 'coral'}
+
+        plotted_lines = 0
+
+        # Loop through parameters
+        for w in widths_p10:
+            for t_val in Ts_p10:
+                for h_val in hs_p10:
+                    d = df_f[(df_f['L'] == w) & np.isclose(df_f['T'], t_val) & np.isclose(df_f['h'], h_val)]
+                    if d.empty:
+                        print(f"     [Warning] No data for L={w}, T={round(1.0 - t_val, 4)}, h={h_val}")
+                        continue
+
+                    # Calculate mean and standard error of the mean (sem)
+                    grouped = d.groupby('q_N')['steps_to_const_N'].agg(['mean', 'sem']).reset_index().sort_values('q_N')
+                    grouped['sem'] = grouped['sem'].fillna(0)
+
+                    # 1. Determine line color/style based on T and L
+                    if np.isclose(t_val, 0.0):
+                        # T = 0.0 line is colored gray/black and dotted
+                        line_color = 'dimgray'
+                        line_style = ':'
+                    else:
+                        # All other T values for a given L are colored the same
+                        line_color = L_colors.get(w, 'blue')
+                        line_style = '-'
+
+                    # 2. Determine brush (fill) color based on h
+                    brush_color = h_brush_colors.get(h_val, 'orange')
+
+                    vis_T = round(1.0 - t_val, 4)
+                    label_str = f'L={w} T={vis_T} h={h_val}'
+
+                    # 3. Plot the main trend line
+                    plt.plot(
+                        grouped['q_N'], grouped['mean'],
+                        color=line_color, linestyle=line_style, linewidth=1.2,
+                        label=label_str
+                    )
+
+                    # 4. Brush over/around the line with a see-through color based on h
+                    plt.fill_between(
+                        grouped['q_N'], 
+                        grouped['mean'] - grouped['sem'], 
+                        grouped['mean'] + grouped['sem'],
+                        color=brush_color, alpha=0.25
+                    )
+                    plotted_lines += 1
+
+        if plotted_lines > 0:
+            plt.xlabel('q/N')
+            plt.ylabel(r'$\langle \text{Steps to Convergence} \rangle / N$')
+            plt.title(f'Multi-Parameter Scaling on Schelling-Axelrod Model\n(F={target_F})', fontsize=15, pad=15)
+            plt.legend(loc='center left', bbox_to_anchor=(1, 0.5), framealpha=1.0, edgecolor='black')
+            plt.tight_layout()
+
+            fname10 = f"steps_fig7_combined_scaling_L{format_list_for_fname(widths_p10)}_T{format_list_for_fname_inverted(Ts_p10)}_h{format_list_for_fname(hs_p10)}.png"
+            plt.savefig(out_dir / fname10, dpi=300, bbox_inches='tight')
+            print(f"  -> Saved: {fname10}")
+        else:
+            print("  -> Plot 10 skipped: No lines to plot.")
+        plt.close()
 
     print(f"\nDone! Output directory: {out_dir}/")
 
