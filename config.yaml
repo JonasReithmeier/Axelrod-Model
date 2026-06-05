@@ -163,8 +163,8 @@ as_experiment:
   max_mcs: 1000000
   transient_mcs: 5000 # can be cut down to 5k ??? look at mobility plots
   sweep:
-    L: [30]
-    F: [10]
+    L: [30, 40]
+    F: [3]
 
     q:
       [
@@ -185,26 +185,13 @@ as_experiment:
         800,
         900,
         1080,
-        1200,
-        1350,
-        1440,
-        1600,
-        1800,
-        2250,
-        2400,
-        2880,
-        3000,
-        3500,
-        4000,
-        4800,
-        5000,
       ]
 
     # h = Fraction of empty sites
-    h: [0.05, 0.3, 0.5, 0.7] #[0.05, 0.5]
+    h: [0.5] #  [0.05, 0.3, 0.5, 0.7]
 
     # T = Tolerance
-    T: [0.0, 0.3, 0.5, 0.7, 1.0] # 0.5,
+    T: [0.3] # [0.0, 0.3, 0.5, 0.7, 1.0]
 ################################################################################
 as_mobility_experiment:
   master_seed: 42
@@ -281,3 +268,14 @@ schelling_plotter:
     L_values: [30]
     T_values: [0.3, 0.5, 0.7, 1.0]
     h_values: [0.7]
+#########################################################################################
+s_max_schelling_plotter:
+  input_file: "data/schelling/schelling_master_results.parquet"
+  output_dir: "plots/task3/s_max_over_q"
+
+  # New universal subentry for dynamic parameters
+  plot_universal:
+    F_values: [3, 10] # Becomes dynamic (legend) if multiple values are given
+    L_values: [30, 40] # Becomes dynamic (legend) if multiple values are given
+    T_values: [0.3] # Becomes dynamic (legend) if multiple values are given
+    h_values: [0.5] # Remains in heading if only one value is given
