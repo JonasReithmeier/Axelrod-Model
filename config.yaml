@@ -163,7 +163,7 @@ as_experiment:
   max_mcs: 1000000
   transient_mcs: 5000 # can be cut down to 5k ??? look at mobility plots
   sweep:
-    L: [30, 40]
+    L: [30]
     F: [10]
 
     q:
@@ -204,7 +204,7 @@ as_experiment:
     h: [0.05, 0.3, 0.5, 0.7] #[0.05, 0.5]
 
     # T = Tolerance
-    T: [0.3, 0.5, 0.7, 1.0] # 0.5,
+    T: [0.0, 0.3, 0.5, 0.7, 1.0] # 0.5,
 ################################################################################
 as_mobility_experiment:
   master_seed: 42
@@ -229,7 +229,7 @@ schelling_plotter:
   plot1_low_density:
     h: 0.05
     L_values: [30, 40]
-    T_values: [0.3, 0.5, 0.7, 1.0]
+    T_values: [1.0] # 0.3, 0.5, 0.7,
 
   plot2_lattice_scaling:
     h: 0.5
