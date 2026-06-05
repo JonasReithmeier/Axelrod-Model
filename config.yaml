@@ -268,3 +268,17 @@ schelling_plotter:
     L_values: [30, 40]
     T_values: [0.3, 0.5, 0.7, 1.0]
     h_values: [0.05, 0.3, 0.5, 0.7]
+
+
+###########################################
+# converge time plotter
+schelling_plotter:
+  input_file: "data/schelling/schelling_master_results.parquet"
+  output_dir: "plots/task3/convg_time"
+  target_F: 10
+  
+  # New subentry for dynamic roll parameters
+  plot_dynamic:
+    L_values: [30]
+    T_values: [0.3, 0.5, 0.7, 1.0]
+    h_values: [0.7]
