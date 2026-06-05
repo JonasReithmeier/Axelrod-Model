@@ -229,7 +229,7 @@ schelling_plotter:
   plot1_low_density:
     h: 0.05
     L_values: [30, 40]
-    T_values: [1.0] # 0.3, 0.5, 0.7,
+    T_values: [0.3, 0.5, 0.7, 1.0] #
 
   plot2_lattice_scaling:
     h: 0.5
