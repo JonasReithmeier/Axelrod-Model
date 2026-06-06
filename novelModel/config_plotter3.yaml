@@ -27,9 +27,9 @@ plotter_config:
     F_values: [10]
     N_values: [900]
     alpha_values: [1.0]
-    dev_mode_values: [2] # 0 = UNIFORM, 2 pareto
+    dev_mode_values: [0, 2] # 0 = UNIFORM, 2 pareto
     dev_param_values: [0.15] ## dont touch
-    dis_threshold_values: [0.0, 0.3, 0.7, 1.0] # Maps to T = 1.0 - dis_threshold
+    dis_threshold_values: [0.7] # Maps to T = 1.0 - dis_threshold
     k_values: [4]
     p_values: [0]
-    weight_mode_values: [0] # 0 = LINEAR, 1 = QUADRATIC
+    weight_mode_values: [0, 1] # 0 = LINEAR, 1 = QUADRATIC
