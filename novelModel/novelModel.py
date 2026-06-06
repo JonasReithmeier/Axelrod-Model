@@ -109,7 +109,7 @@ class AxelrodDevSmallWorld:
 
     def initialize_new_simulation(self):
         self._build_graph()
-        self.grid = self.rng.integers(0, self.q, size=(self.N, self.F), dtype=np.int16)
+        self.grid = self.rng.integers(0, self.q, size=(self.N, self.F), dtype=np.int32)
         self.dev = sample_development(self.N, self.dev_mode, self.dev_param, self.rng)
         self.updates_since_last_change = 0
         self.total_steps = 0

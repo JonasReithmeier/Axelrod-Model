@@ -5,17 +5,17 @@ n_parallel: 23
 
 sweep:
   mode: grid
-  n_realizations: 3
+  n_realizations: 1
   params:
     p: [0] #[0.05, 0.1, 0.2, 0.4, 0.8] # full topology range
     weight_mode: [0, 1] # linear, quadratic
-    alpha: [0.25, 0.75, 1.5] # finer resolution, especially low end
+    alpha: [0.1, 0.25, 0.75, 1.0, 1.5] # finer resolution, especially low end
     dis_threshold: [0.0, 0.3, 0.7, 1.0] # finer — phase transition likely here
     dev_mode: [0, 2] # uniform vs pareto
     dev_param: [0.15]
     N: [900] # large enough that cultural drift is slow and development matters
     k: [4]
-    F: [10]
+    F: [10, 100]
     q:
       [
         10,
@@ -48,6 +48,15 @@ sweep:
         4000,
         4800,
         5000,
+        10000,
+        20000,
+        30000,
+        50000,
+        80000,
+        100000,
+        400000,
+        700000,
+        1000000,
       ]
 
 fixed:

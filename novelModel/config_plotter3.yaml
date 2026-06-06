@@ -1,0 +1,30 @@
+plotter_config:
+  input_file: "novelModel/data/results_no_move_if_omega_is_0.csv"
+  output_dir: "novelModel/plots/plotter3/narrowed_down"
+
+  # Define base dimensions
+  x_axis: "q"
+  y_axis: "s_max"
+
+  # Normalization configuration
+  x_normalize: true # Set to true to normalize the X axis
+  x_normalize_by: "N" # Column to divide X-axis values by (e.g., q / N)
+
+  y_normalize: false # Set to true to normalize the Y axis (order parameter)
+  y_normalize_by: "N" # Column to divide Y-axis values by (e.g., s_max / N)
+
+  # Axis scale configurations (linear vs logarithmic)
+  x_log_scale: true # Set to true for logarithmic X-axis
+  y_log_scale: false # Set to true for logarithmic Y-axis
+
+  # Control parameters to filter and group by
+  parameters:
+    F_values: [10]
+    N_values: [900]
+    alpha_values: [0.25, 1.0]
+    dev_mode_values: [0] # 0 = UNIFORM, 2 pareto
+    dev_param_values: [0.15] ## dont touch
+    dis_threshold_values: [0.0, 0.3, 0.7, 1.0] # Maps to T = 1.0 - dis_threshold
+    k_values: [4]
+    p_values: [0]
+    weight_mode_values: [1] # 0 = LINEAR, 1 = QUADRATIC
