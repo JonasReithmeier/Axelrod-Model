@@ -32,6 +32,25 @@ LABEL_MAP = {
     'N': 'N'
 }
 
+# Short abbreviations used strictly for the filename to prevent Windows MAX_PATH (260 char) errors
+FILENAME_ABBR = {
+    'dis_threshold': 'dt',
+    'dev_mode': 'dm',
+    'dev_param': 'dp',
+    'weight_mode': 'wm',
+    'alpha': 'alpha',
+    'F': 'F',
+    'N': 'N',
+    'k': 'k',
+    'p': 'p',
+    'q': 'q',
+    's_max': 'smax',
+    'mean_dissatisfaction': 'dissat',
+    'degree_variance': 'degvar',
+    'capacity_exceeded': 'capexc',
+    'converged': 'conv'
+}
+
 def load_config(config_path="novelModel/config_plotter3.yaml"):
     """Loads the YAML configuration file."""
     path = Path(config_path)
@@ -72,10 +91,10 @@ def format_list_for_fname(lst, param_name):
     raw_str = "-".join(formatted_vals)
     return re.sub(r'[^\w\-_.]', '_', raw_str)
 
-def get_axis_label(axis_name, is_normalized, norm_by):
-    """Generates a structured label for an axis, reflecting division if normalized."""
+def get_axis_label(axis_name, is_normalized, norm_by, is_already_normalized=False):
+    """Generates a structured label for an axis, reflecting division if normalized or pre-normalized."""
     base_label = LABEL_MAP.get(axis_name, axis_name)
-    if is_normalized and norm_by:
+    if (is_normalized or is_already_normalized) and norm_by:
         norm_label = LABEL_MAP.get(norm_by, norm_by)
         return f"{base_label}/{norm_label}"
     return base_label
@@ -191,8 +210,15 @@ def generate_dynamic_plot(df, cfg, out_dir):
         plotted_lines += 1
 
     if plotted_lines > 0:
+        # Determine label configuration for Y
+        y_already_normed = cfg.get('y_already_normalized', False)
+        y_already_norm_by = cfg.get('y_already_normalized_by', 'N')
+
+        y_label_is_normed = y_normalized or y_already_normed
+        y_label_norm_by = y_norm_by if y_normalized else y_already_norm_by
+
         plt.xlabel(get_axis_label(x_axis, x_normalized, x_norm_by))
-        plt.ylabel(get_axis_label(y_axis, y_normalized, y_norm_by))
+        plt.ylabel(get_axis_label(y_axis, y_label_is_normed, y_label_norm_by))
 
         # Apply logarithmic scale if configured
         x_log = cfg.get('x_log_scale', False)
@@ -222,18 +248,21 @@ def generate_dynamic_plot(df, cfg, out_dir):
         plt.legend(loc='best', framealpha=1.0, edgecolor='black')
         plt.tight_layout()
 
-        # Build path-safe filename. Varying params are listed first, then fixed ones.
-        # This prevents metadata at the end of the lists (such as weight_mode) from being truncated.
-        y_str = f"{y_axis}_norm_by_{y_norm_by}" if y_normalized else y_axis
-        x_str = f"{x_axis}_norm_by_{x_norm_by}" if x_normalized else x_axis
+        # Build path-safe filename using short abbreviations.
+        # This keeps filenames unique but significantly shorter to stay under 260 characters.
+        y_abbr = FILENAME_ABBR.get(y_axis, y_axis)
+        x_abbr = FILENAME_ABBR.get(x_axis, x_axis)
+        
+        y_str = f"{y_abbr}_norm_{FILENAME_ABBR.get(y_norm_by, y_norm_by)}" if y_normalized else y_abbr
+        x_str = f"{x_abbr}_norm_{FILENAME_ABBR.get(x_norm_by, x_norm_by)}" if x_normalized else x_abbr
 
         if x_log:
             x_str += "_log"
         if y_log:
             y_str += "_log"
 
-        roll_parts = [f"{p}-{format_list_for_fname(filters[p], p)}" for p in sorted(rollable_params)]
-        fix_parts = [f"{p}-{format_list_for_fname(filters[p], p)}" for p in sorted(fixed_params)]
+        roll_parts = [f"{FILENAME_ABBR.get(p, p)}-{format_list_for_fname(filters[p], p)}" for p in sorted(rollable_params)]
+        fix_parts = [f"{FILENAME_ABBR.get(p, p)}-{format_list_for_fname(filters[p], p)}" for p in sorted(fixed_params)]
 
         fname_parts = [f"plot_{y_str}_vs_{x_str}"]
         if roll_parts:
@@ -242,7 +271,8 @@ def generate_dynamic_plot(df, cfg, out_dir):
             fname_parts.append("fix_" + "_".join(fix_parts))
         
         fname = "_".join(fname_parts)
-        fname = re.sub(r'[^\w\-_.]', '_', fname)[:220] + ".png" # Expanded character budget to 220
+        # Clean special chars and truncate strictly at 150 characters for OS safety
+        fname = re.sub(r'[^\w\-_.]', '_', fname)[:150] + ".png"
         
         output_path = out_dir / fname
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
