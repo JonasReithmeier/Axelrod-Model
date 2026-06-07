@@ -174,7 +174,7 @@ def step_dev_sw(grid, dev, padded_edges, adj_matrix, N, F, weight_mode, alpha,
                 dis_threshold, rng, max_degree,
                 neighbor_buf, dis_buf):
     """
-    One elementary step. Reorganized execution flow.
+    One elementary step with modified fallback logic.
     Returns (rewired_flag, interacted_flag, capacity_exceeded_flag).
     """
     agent_i = int(rng.random() * N)
@@ -216,7 +216,7 @@ def step_dev_sw(grid, dev, padded_edges, adj_matrix, N, F, weight_mode, alpha,
         else:
             return False, False, True  # No available node found (capacity exceeded)
 
-    # --- SECOND: Always try Axelrod interaction first ---
+    # --- SECOND: Try Axelrod interaction if differences exist ---
     choice_k = int(rng.random() * n_neighbors)
     agent_j = neighbor_buf[choice_k]
     dis_ij = dis_buf[choice_k]
@@ -229,48 +229,47 @@ def step_dev_sw(grid, dev, padded_edges, adj_matrix, N, F, weight_mode, alpha,
             diff_buf_local[diff_count] = f
             diff_count += 1
 
-    # If partners are NOT completely similar, interaction is possible
     if diff_count > 0:
         prob_copy = 1.0 - dis_ij
         if rng.random() < prob_copy:
-            # Axelrod interaction successful
+            # Axelrod interaction successful -> update culture and return immediately
             trait = diff_buf_local[int(rng.random() * diff_count)]
             grid[agent_i, trait] = grid[agent_j, trait]
             return False, True, False
 
-        # --- THIRD: Interaction failed, trigger mobility fallback ---
-        avg_dis = 0.0
-        for k in range(n_neighbors):
-            avg_dis += dis_buf[k]
-        avg_dis /= n_neighbors
+    # --- THIRD: Interaction failed OR diff_count == 0 -> Trigger mobility check ---
+    avg_dis = 0.0
+    for k in range(n_neighbors):
+        avg_dis += dis_buf[k]
+    avg_dis /= n_neighbors
 
-        if avg_dis > dis_threshold:
-            worst_k = 0
-            worst_dis = dis_buf[0]
-            for k in range(1, n_neighbors):
-                if dis_buf[k] > worst_dis:
-                    worst_dis = dis_buf[k]
-                    worst_k = k
-            worst_j = neighbor_buf[worst_k]
+    if avg_dis > dis_threshold:
+        worst_k = 0
+        worst_dis = dis_buf[0]
+        for k in range(1, n_neighbors):
+            if dis_buf[k] > worst_dis:
+                worst_dis = dis_buf[k]
+                worst_k = k
+        worst_j = neighbor_buf[worst_k]
 
-            # Find new target connection
-            new_j = -1
-            for _ in range(N):
-                candidate = int(rng.random() * N)
-                if candidate == agent_i or has_edge(adj_matrix, agent_i, candidate, N):
-                    continue
-                new_j = candidate
-                break
+        # Find new target connection
+        new_j = -1
+        for _ in range(N):
+            candidate = int(rng.random() * N)
+            if candidate == agent_i or has_edge(adj_matrix, agent_i, candidate, N):
+                continue
+            new_j = candidate
+            break
 
-            if new_j != -1:
-                if is_node_full(padded_edges, new_j, max_degree):
-                    return False, False, True  # Blocked by capacity limit
+        if new_j != -1:
+            if is_node_full(padded_edges, new_j, max_degree):
+                return False, False, True  # Blocked by capacity limit
 
-                remove_edge(padded_edges, adj_matrix, agent_i, worst_j, N, max_degree)
-                add_edge(padded_edges, adj_matrix, agent_i, new_j, N, max_degree)
-                return True, False, False
+            remove_edge(padded_edges, adj_matrix, agent_i, worst_j, N, max_degree)
+            add_edge(padded_edges, adj_matrix, agent_i, new_j, N, max_degree)
+            return True, False, False
 
-    # Default fallback (e.g. completely similar or average dissatisfaction too low)
+    # Default fallback (e.g., interaction failed/skipped and average dissatisfaction too low)
     return False, False, False
 
 # ---------------------------------------------------------------------------

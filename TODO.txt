@@ -1,3 +1,6 @@
+change plotting style from schelling paper (used also for novelModel plots) to colors and errorbar scatter
+
+for report: cut with plt.xlim  to have a good section 
 
 novel model: focus on one weight function and one distribution for the development-constant
 

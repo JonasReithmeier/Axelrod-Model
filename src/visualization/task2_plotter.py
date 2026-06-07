@@ -8,7 +8,7 @@ import yaml
 import math
 import seaborn as sns
 
-def recreate_watts_strogatz_plot():
+def recreate_watts_strogatz_plot(N_par,k_par):
 
     with open("config.yaml", "r") as f:
         config = yaml.safe_load(f)
@@ -28,10 +28,10 @@ def recreate_watts_strogatz_plot():
     # 2. Filter for Watts-Strogatz exact parameters (N=1000, k=10)
     # The Axelrod variables (F, q, max_steps) don't affect graph topology, 
     # so grouping by 'p' will safely average L and C across all those realizations.
-    df_ws = df[(df['N'] == 1000) & (df['k'] == 10)]
+    df_ws = df[(df['N'] == N_par) & (df['k'] == k_par)]
     
     if df_ws.empty:
-        print("Error: No data found for N=1000 and k=10 in the database.")
+        print(f"Error: No data found for N={N_par} and k={k_par} in the database.")
         return
 
     # 3. Calculate average L and C for each rewiring probability p
@@ -80,18 +80,19 @@ def recreate_watts_strogatz_plot():
 
     # Add text directly onto the plot (like the original figure)
     # We place these dynamically based on the log scale
-    ax.text(0.002, 0.8, '$C(p) / C(0)$', fontsize=16)
-    ax.text(0.0003, 0.25, '$L(p) / L(0)$', fontsize=16)
+    #ax.text(0.002, 0.8, '$C(p) / C(0)$', fontsize=16)
+    #ax.text(0.0003, 0.25, '$L(p) / L(0)$', fontsize=16)
+    ax.legend(title="Grid Coefficients", fontsize=11, title_fontsize=12, loc='upper right')
 
     # Final touches
     #plt.title("Recreation of Watts-Strogatz (1998) Figure 2", fontsize=14, pad=15)
     plt.tight_layout()
     
     # Save and Show
-    plot_dir = Path("plots/task2")
+    plot_dir = Path("reportPlots/task2")
     plot_dir.mkdir(parents=True, exist_ok=True)
 
-    file_name =  "watts_strogatz_fig2.png"
+    file_name =  f"watts_strogatz_fig_N{N_par}_k{k_par}.png"
     save_path = plot_dir / file_name
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.close() 
@@ -151,9 +152,9 @@ def plot_sw_phase_transition(N_val,F_val, k_val, target_p_values,name):
 
         q_vals = subset['q']
         number_realisations = len(q_vals)
-        mean_smax = subset['mean']
+        mean_smax = subset['mean'] 
         std_smax = subset['std'].fillna(-1) # Fill NaN with 0 if only 1 realization exists
-        
+         
         # plt.errorbar replaces plot() and fill_between()
         # fmt='-o' creates a line with circular markers
         # capsize defines the width of the error bar caps
@@ -178,7 +179,7 @@ def plot_sw_phase_transition(N_val,F_val, k_val, target_p_values,name):
     out_dir = Path("reportPlots/task2")
     out_dir.mkdir(parents=True, exist_ok=True)
     
-    out_file = out_dir / f"phase_transition_F{F_val}_k{k_val}_s{name}.png"
+    out_file = out_dir / f"phase_transition_N{N_val}_F{F_val}_k{k_val}_s{name}.png"
     plt.tight_layout()
     plt.savefig(out_file)
     plt.close(fig) 
@@ -254,6 +255,7 @@ def plot2DCuts(N_val,F_val,k_val):
     
 
 if __name__ == "__main__":
-    #recreate_watts_strogatz_plot()
+    recreate_watts_strogatz_plot(400,4)
+    #recreate_watts_strogatz_plot(900,4)
     plot2DCuts(400,3,4)
     heatmap(400,3,4)
