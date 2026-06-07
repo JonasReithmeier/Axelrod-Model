@@ -4,6 +4,7 @@ import seaborn as sns
 from pathlib import Path
 import math
 import yaml
+import numpy as np
 
 def plot_axelrod_data():
     # --- 1. Load Data ---
@@ -40,10 +41,52 @@ def plot_axelrod_data():
 
     M_min = -1 # realizations (smallest group)
 
-    ploted_widths = [20,30,40,50,100]
+    ploted_widths = [20,30,40,50,100,150]
 
     #for F in unique_Fs:
-    for F in [3]:
+    #for F in [3]:
+    #    df_f = df[df['F'] == F]
+    #    
+    #    for metric_key, metric_name in metrics:
+    #        plt.figure(figsize=(10, 7))
+    #        
+    #        # Group by width (N) and q to get statistics
+    #        # We use width for the legend label
+    #        widths = sorted(df_f['width'].unique())
+    #        
+    #        #for width in widths:
+    #        for width in ploted_widths:
+    #        #to recreate graph from paper on these widths
+    #            df_w = df_f[df_f['width'] == width]
+    #            
+    #            # Aggregate data for each q
+    #            stats = df_w.groupby('q')[metric_key].agg(['mean', 'std']).reset_index()
+    #            number_realisations = len(df_w.groupby('q')[metric_key])
+    #            
+    #            # Plot line with error bars (standard deviation)
+    #            plt.errorbar(
+    #                stats['q'], stats['mean'], yerr=stats['std']/math.sqrt(number_realisations),
+    #                label=f"N = {width}²",
+    #                marker='o', markersize=4, capsize=4, capthick= 1.5, elinewidth=1, linestyle='-'
+    #            )###
+#
+#            # Labels and Aesthetics
+    #        plt.title(f"Axelrod Model, regular lattice, M=500 realizations | F = {F} features", pad=20)
+    #        plt.xlabel("Number of Traits per Feature (q)")
+    #        plt.ylabel(metric_name)
+    #        plt.ylim(-0.05, 1.05) # Values are normalized 0 to 1
+    #        plt.grid(True, which='both', linestyle='--', alpha=0.5)
+    #        plt.legend(title="Grid Size", frameon=True)
+    #        
+    #        # Save Logic
+    #        file_name =  "task1_graph_recreation.png"  #f"axelrod_F{F}_{metric_key}.png"
+    ##        save_path = plot_dir / file_name
+    #        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    #        plt.close() # Close figure to free memory
+#
+    #print(f"Update complete. Plots saved to: {plot_dir}")
+
+    for F in unique_Fs:
         df_f = df[df['F'] == F]
         
         for metric_key, metric_name in metrics:
@@ -57,27 +100,21 @@ def plot_axelrod_data():
             for width in ploted_widths:
             #to recreate graph from paper on these widths
                 df_w = df_f[df_f['width'] == width]
-
-                M = len(df_w)
-                if M_min < 0:
-                    M_min = M
-                else:
-                    if M < M_min:
-                        M_min = M
                 
                 # Aggregate data for each q
                 stats = df_w.groupby('q')[metric_key].agg(['mean', 'std']).reset_index()
-                number_realisations = len(df_w.groupby('q')[metric_key])
-                
+                number_realisations = df_w.groupby('q')[metric_key].size().iloc[0]
+                print(number_realisations)
+                #exit()
                 # Plot line with error bars (standard deviation)
                 plt.errorbar(
                     stats['q'], stats['mean'], yerr=stats['std']/math.sqrt(number_realisations),
                     label=f"N = {width}²",
-                    marker='o', markersize=4, capsize=3, elinewidth=1, linestyle='-'
+                    marker='o', markersize=4, capsize=4, capthick=1.5, elinewidth=1, linestyle='-'
                 )
 
             # Labels and Aesthetics
-            plt.title(f"Axelrod Model, regular lattice, M=500 realizations | F = {F} features", pad=20)
+            plt.title(f"Axelrod Model, regular lattice, {metric_key}, M=500 realizations, F = {F}", pad=20)
             plt.xlabel("Number of Traits per Feature (q)")
             plt.ylabel(metric_name)
             plt.ylim(-0.05, 1.05) # Values are normalized 0 to 1
@@ -85,7 +122,7 @@ def plot_axelrod_data():
             plt.legend(title="Grid Size", frameon=True)
             
             # Save Logic
-            file_name =  "task1_graph_recreation.png"  #f"axelrod_F{F}_{metric_key}.png"
+            file_name =  f"axelrod_F{F}_{metric_key}.png"
             save_path = plot_dir / file_name
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
             plt.close() # Close figure to free memory
@@ -106,27 +143,21 @@ def plot_axelrod_data():
             for width in ploted_widths:
             #to recreate graph from paper on these widths
                 df_w = df_f[df_f['width'] == width]
-
-                M = len(df_w)
-                if M_min < 0:
-                    M_min = M
-                else:
-                    if M < M_min:
-                        M_min = M
                 
                 # Aggregate data for each q
                 stats = df_w.groupby('q')[metric_key].agg(['mean', 'std']).reset_index()
-                number_realisations = len(df_w.groupby('q')[metric_key])
-                
+                number_realisations = df_w.groupby('q')[metric_key].size().iloc[0]
+                print(number_realisations)
+                #exit()
                 # Plot line with error bars (standard deviation)
                 plt.errorbar(
-                    stats['q'], stats['mean'], yerr=stats['std']/math.sqrt(number_realisations),
+                    stats['q']/math.pow(width,2), stats['mean'], yerr=stats['std']/math.sqrt(number_realisations),
                     label=f"N = {width}²",
-                    marker='o', markersize=4, capsize=3, elinewidth=1, linestyle='-'
+                    marker='o', markersize=4, capsize=4, capthick=1.5, elinewidth=1, linestyle='-'
                 )
 
             # Labels and Aesthetics
-            plt.title(f"Axelrod Model, regular lattice, M=500 realizations | F = {F} features", pad=20)
+            plt.title(f"Axelrod Model, regular lattice, {metric_key}, M=500 realizations, F = {F}", pad=20)
             plt.xlabel("Number of Traits per Feature (q)")
             plt.ylabel(metric_name)
             plt.ylim(-0.05, 1.05) # Values are normalized 0 to 1
@@ -134,10 +165,169 @@ def plot_axelrod_data():
             plt.legend(title="Grid Size", frameon=True)
             
             # Save Logic
-            file_name =  f"axelrod_F{F}_{metric_key}.png"
+            file_name =  f"axelrod_F{F}_{metric_key}_normalizedQ.png"
             save_path = plot_dir / file_name
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
             plt.close() # Close figure to free memory
+
+    print(f"Update complete. Plots saved to: {plot_dir}")
+
+    for F in unique_Fs:
+        df_f = df[df['F'] == F]
+        
+        for metric_key, metric_name in metrics:
+            plt.figure(figsize=(10, 7))
+            
+            # Group by width (N) and q to get statistics
+            # We use width for the legend label
+            widths = sorted(df_f['width'].unique())
+            
+            #for width in widths:
+            for width in ploted_widths:
+            #to recreate graph from paper on these widths
+                df_w = df_f[df_f['width'] == width]
+                
+                # Aggregate data for each q
+                stats = df_w.groupby('q')[metric_key].agg(['mean', 'std']).reset_index()
+                #squared_stats = df_w.copy(deep = True)
+                #print(squared_stats)
+                ##exit()
+                #squared_stats = squared_stats.pow[metric_key] ** 2
+                #squared_stats = squared_stats.groupby('q')[metric_key].agg(['mean']).reset_index()
+                N = math.pow(width,2)
+
+                chi_df = (
+                    df_w.groupby("q")[metric_key].agg(
+                        mean_s="mean",
+                        mean_s2=lambda x: np.square(x).mean()
+                    ).reset_index()
+                )
+
+
+                chi_df["chi"] = N * (chi_df["mean_s2"]-chi_df["mean_s"]**2)
+                print(chi_df)
+                number_realisations = df_w.groupby('q')[metric_key].size().iloc[0]
+                #print(number_realisations)
+                #exit()
+                # Plot line with error bars (standard deviation)
+
+                plt.plot(chi_df["q"], chi_df["chi"], marker="o",  label=f"N = {width}²")
+
+
+            # Labels and Aesthetics
+            plt.title(f"Axelrod Model, regular lattice, χ distribution of {metric_key}, F = {F}", pad=20)
+            plt.xlabel("Number of Traits per Feature (q)")
+            plt.ylabel(f"χ({metric_key})")
+            #plt.ylim(-0.05, 1.05) # Values are normalized 0 to 1
+            plt.grid(True, which='both', linestyle='--', alpha=0.5)
+            plt.legend(title="Grid Size", frameon=True)
+            
+            # Save Logic
+            file_name =  f"axelrod_F{F}_{metric_key}_Chi.png"
+            save_path = plot_dir / file_name
+            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+            plt.close() # Close figure to free memory
+
+    print(f"Update complete. Plots saved to: {plot_dir}")
+
+    for F in unique_Fs:
+        df_f = df[df['F'] == F]
+        
+        for metric_key, metric_name in metrics:
+            plt.figure(figsize=(10, 7))
+            
+            # Group by width (N) and q to get statistics
+            # We use width for the legend label
+            widths = sorted(df_f['width'].unique())
+            
+            #for width in widths:
+            for width in ploted_widths:
+            #to recreate graph from paper on these widths
+                df_w = df_f[df_f['width'] == width]
+                
+                # Aggregate data for each q
+                stats = df_w.groupby('q')[metric_key].agg(['mean', 'std']).reset_index()
+                #squared_stats = df_w.copy(deep = True)
+                #print(squared_stats)
+                ##exit()
+                #squared_stats = squared_stats.pow[metric_key] ** 2
+                #squared_stats = squared_stats.groupby('q')[metric_key].agg(['mean']).reset_index()
+                N = math.pow(width,2)
+
+                chi_df = (
+                    df_w.groupby("q")[metric_key].agg(
+                        mean_s="mean",
+                        mean_s2=lambda x: np.square(x).mean()
+                    ).reset_index()
+                )
+
+                #VAR
+                chi_df["chi"] =  (chi_df["mean_s2"]-chi_df["mean_s"]**2)
+                print(chi_df)
+                number_realisations = df_w.groupby('q')[metric_key].size().iloc[0]
+                #print(number_realisations)
+                #exit()
+                # Plot line with error bars (standard deviation)
+
+                plt.plot(chi_df["q"], chi_df["chi"], marker="o",  label=f"N = {width}²")
+
+
+            # Labels and Aesthetics
+            plt.title(f"Axelrod Model, regular lattice, χ distribution of {metric_key}, F = {F}", pad=20)
+            plt.xlabel("Number of Traits per Feature (q)")
+            plt.ylabel(f"χ({metric_key})")
+            #plt.ylim(-0.05, 1.05) # Values are normalized 0 to 1
+            plt.grid(True, which='both', linestyle='--', alpha=0.5)
+            plt.legend(title="Grid Size", frameon=True)
+            
+            # Save Logic
+            file_name =  f"axelrod_F{F}_{metric_key}_VAR.png"
+            save_path = plot_dir / file_name
+            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+            plt.close() # Close figure to free memory
+
+    for F in unique_Fs:
+        df_f = df[df['F'] == F]
+        for q0 in range(13,16):
+            for metric_key, metric_name in metrics:
+                plt.figure(figsize=(10, 7))
+                
+                # Group by width (N) and q to get statistics
+                # We use width for the legend label
+                widths = sorted(df_f['width'].unique())
+                
+                #for width in widths:
+                #to recreate graph from paper on these widths
+                df_w = df_f[df_f['width'] == 100]
+                data = df_w.loc[df["q"] == q0, metric_key]
+                    
+                    # Aggregate data for each q
+                    #squared_stats = df_w.copy(deep = True)
+                    #print(squared_stats)
+                    ##exit()
+                    #squared_stats = squared_stats.pow[metric_key] ** 2
+                    #squared_stats = squared_stats.groupby('q')[metric_key].agg(['mean']).reset_index()
+                N = math.pow(width,2)
+
+                    #print(number_realisations)
+                    #exit()
+                    # Plot line with error bars (standard deviation)
+
+                plt.hist(data, bins=30)
+
+
+                # Labels and Aesthetics
+                plt.title(f"Axelrod Model, regular lattice, Histogram of {metric_key} for q = {q0}, M=500 realizations, F = {F}", pad=20)
+                plt.xlabel(f"{metric_key} distribution")
+                plt.ylabel("Number of iterations")
+                #plt.ylim(-0.05, 1.05) # Values are normalized 0 to 1
+                plt.grid(True, which='both', linestyle='--', alpha=0.5)
+                
+                # Save Logic
+                file_name =  f"axelrod_F{F}_{metric_key}_q{q0}_Hist.png"
+                save_path = plot_dir / file_name
+                plt.savefig(save_path, dpi=300, bbox_inches='tight')
+                plt.close() # Close figure to free memory
 
     print(f"Update complete. Plots saved to: {plot_dir}")
 
